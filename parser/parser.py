@@ -39,7 +39,7 @@ class Parser:
                 else:
                     result[-1] += symbol
             elif parsing_mode == ParsingMode.DOUBLE_QUOTED:
-                if symbol == '\'':
+                if symbol == '\"':
                     parsing_mode = ParsingMode.NORMAL
                 else:
                     result[-1] += symbol
