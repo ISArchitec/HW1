@@ -2,6 +2,7 @@ from typing import Self
 from sentence import SentenceSequence, Sentence, Word
 from enum import Enum, auto
 from interpreter.session import Session
+from utils.exception import ParserError
 
 class ParsingMode(Enum):
     NORMAL = auto()
@@ -46,8 +47,14 @@ class Parser:
             else:
                 if symbol == ' ':
                     parsing_mode = ParsingMode.SKIP
+                elif symbol == '\'':
+                    parsing_mode = ParsingMode.QUOTED
+                elif symbol == '\"':
+                    parsing_mode = ParsingMode.DOUBLE_QUOTED
                 else:
                     result[-1] += symbol
+        if parsing_mode in (ParsingMode.QUOTED, ParsingMode.DOUBLE_QUOTED):
+            raise ParserError("Unclosed quote")
         return result
 
     def __make_sentence(self: Self, words: list[str]) -> Sentence:
