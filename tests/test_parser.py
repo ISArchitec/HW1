@@ -1,17 +1,17 @@
-# tests/test_parser.py
-
 import pytest
 
 from parser import Parser
+from interpreter.session import Session
 from utils.exception import ParserError
 
+EMPTY_SESSION = Session()
 
 def parse_words(source: str) -> list[str]:
-    parser = Parser(session=None)  # session в __init__ не используется
+    parser = Parser(session=EMPTY_SESSION)
     sequence = parser.parse(source)
 
-    assert sequence.sentence is not None
-    return [word.word for word in sequence.sentence.words]
+    assert len(sequence) == 1
+    return [word.word for word in sequence[0].words]
 
 
 @pytest.mark.parametrize(
@@ -61,6 +61,6 @@ def test_parser_raises_on_malformed_quotes(source: str) -> None:
         parse_words(source)
 
 def test_parser_no_sequence_on_empty_source():
-    parser = Parser(session=None)  # session в __init__ не используется
+    parser = Parser(session=EMPTY_SESSION)
     sequence = parser.parse("")
-    assert sequence.sentence is None
+    assert len(sequence) == 0

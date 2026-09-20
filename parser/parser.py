@@ -11,10 +11,10 @@ class ParsingMode(Enum):
     SKIP = auto()
 
 class Parser:
-    session: Session
+    __session: Session
 
     def __init__(self: Self, session: Session):
-        self.session = session
+        self.__session = session
 
     def parse(self: Self, string: str) -> SentenceSequence:
         sequence = SentenceSequence()

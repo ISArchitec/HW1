@@ -2,13 +2,23 @@ from sentence.sentence import Sentence
 
 
 class SentenceSequence:
+    __sentence: list[Sentence]
+
     def __init__(self):
-        # For now, there is no need to process multiple sentences
-        self.sentence = None
+        self.__sentence = []
 
     def add_sentence(self, sentence: Sentence) -> None:
-        self.sentence = sentence
+        self.__sentence.append(sentence)
+
+    def __iter__(self):
+        return iter(self.__sentence)
+
+    def __len__(self):
+        return len(self.__sentence)
+
+    def __getitem__(self, key: int):
+        return self.__sentence[key]
 
     def execute(self) -> None:
-        if self.sentence is not None:
-            self.sentence.execute()
+        for sentence in self.__sentence:
+            sentence.execute()
