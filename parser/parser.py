@@ -5,9 +5,13 @@ from interpreter.session import Session
 from utils.exception import ParserError
 
 class ParsingMode(Enum):
+    # simple token parsing
     NORMAL = auto()
+    # '...'
     QUOTED = auto()
+    # "..."
     DOUBLE_QUOTED = auto()
+    # skip whitespaces between words
     SKIP = auto()
 
 class Parser:
