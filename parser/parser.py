@@ -70,7 +70,8 @@ class Parser:
                     result[-1] += symbol
         if parsing_mode in (ParsingMode.QUOTED, ParsingMode.DOUBLE_QUOTED):
             raise ParserError("Unclosed quote")
-        # len(result == 0)
+        if len(result) == 0:
+            raise ParserError("Sentence couldn't be empty")
         return result
 
     def __make_sentence(self: Self, words: list[str]) -> Sentence:
