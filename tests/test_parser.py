@@ -23,6 +23,7 @@ def parse_words(source: str) -> list[str]:
 
         ("echo 'hello world'", ["echo", "hello world"]),
         ("'hello world'", ["hello world"]),
+        ("'hello world'\n", ["hello world"]),
         ("'hello' world", ["hello", "world"]),
         ("''", [""]),
 

@@ -46,7 +46,7 @@ class Parser:
                 elif symbol == '\"':
                     parsing_mode = ParsingMode.DOUBLE_QUOTED
                     result.append('')
-                elif symbol != ' ':
+                elif not symbol.isspace():
                     parsing_mode = ParsingMode.NORMAL
                     result.append(symbol)
             elif parsing_mode == ParsingMode.QUOTED:
@@ -60,7 +60,7 @@ class Parser:
                 else:
                     result[-1] += symbol
             else:
-                if symbol == ' ':
+                if symbol.isspace():
                     parsing_mode = ParsingMode.SKIP
                 elif symbol == '\'':
                     parsing_mode = ParsingMode.QUOTED
