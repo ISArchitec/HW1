@@ -11,14 +11,25 @@ class ParsingMode(Enum):
     SKIP = auto()
 
 class Parser:
+    session: Session
+
     def __init__(self: Self, session: Session):
-        pass
+        self.session = session
 
     def parse(self: Self, string: str) -> SentenceSequence:
-        words = self.__parse_whitespaces(string)
-        sentence = SentenceSequence()
-        sentence.add_sentence(self.__make_sentence(words))
-        return sentence
+        sequence = SentenceSequence()
+        sentences = self.__parse_pipes(string)
+        for sentence in sentences:
+            words = self.__parse_whitespaces(sentence)
+            sequence.add_sentence(self.__make_sentence(words))
+        return sequence
+
+    def __parse_pipes(self: Self, string: str) -> list[str]:
+        string = string.strip()
+        if len(string) == 0:
+            return []
+        else:
+            return [string]
 
     def __parse_whitespaces(self: Self, sentence: str) -> list[str]:
         result = []
@@ -55,6 +66,7 @@ class Parser:
                     result[-1] += symbol
         if parsing_mode in (ParsingMode.QUOTED, ParsingMode.DOUBLE_QUOTED):
             raise ParserError("Unclosed quote")
+        # len(result == 0)
         return result
 
     def __make_sentence(self: Self, words: list[str]) -> Sentence:

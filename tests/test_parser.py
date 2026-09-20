@@ -17,7 +17,6 @@ def parse_words(source: str) -> list[str]:
 @pytest.mark.parametrize(
     "source, expected",
     [
-        ("", []),
         ("echo", ["echo"]),
         ("echo hello world", ["echo", "hello", "world"]),
         ("  echo   hello  ", ["echo", "hello"]),
@@ -60,3 +59,8 @@ def test_parser_parses_words_and_quotes(source: str, expected: list[str]) -> Non
 def test_parser_raises_on_malformed_quotes(source: str) -> None:
     with pytest.raises(ParserError):
         parse_words(source)
+
+def test_parser_no_sequence_on_empty_source():
+    parser = Parser(session=None)  # session в __init__ не используется
+    sequence = parser.parse("")
+    assert sequence.sentence is None

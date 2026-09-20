@@ -1,4 +1,3 @@
-from utils.exception import InternalError
 from sentence.sentence import Sentence
 
 
@@ -11,6 +10,5 @@ class SentenceSequence:
         self.sentence = sentence
 
     def execute(self) -> None:
-        if self.sentence is None:
-            raise InternalError('Internal error')
-        self.sentence.execute()
+        if self.sentence is not None:
+            self.sentence.execute()
