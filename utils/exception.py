@@ -9,10 +9,6 @@ class ParserError(CliError):
     pass
 
 
-class InternalError(CliError):
-    pass
-
-
 class ExecutionError(CliError):
     def __init__(self, code: int):
         self.code = code
