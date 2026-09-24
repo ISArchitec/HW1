@@ -1,4 +1,3 @@
-import io
 import os
 import sys
 import tempfile
@@ -9,22 +8,8 @@ from unittest.mock import patch
 from command.command_factory import CommandFactory
 from command.builtins import EchoCommand
 from command.exec_command import ExecCommand
-from stream import InStream, OutStream
 from utils.exception import ExecutionError
-
-
-class MemoryStream(InStream, OutStream):
-    def __init__(self, text=""):
-        self.buffer = io.StringIO(text)
-
-    def read_char(self):
-        return self.buffer.read(1)
-
-    def read_line(self):
-        return self.buffer.readline()
-
-    def write(self, string):
-        self.buffer.write(string)
+from tests.helpers import MemoryStream
 
 
 class CommandTests(unittest.TestCase):
@@ -266,6 +251,26 @@ class CommandTests(unittest.TestCase):
             first.write_bytes(b"a\n\n")
             second.write_bytes(b"\n\nb")
             self.assertEqual(self.execute_command(["cat", "-s", str(first), str(second)]), "a\n\nb")
+
+    def test_cat_b_numbers_only_nonblank(self):
+        self.assertEqual(self.execute_command(["cat", "-b"], "a\n\nb\n"),
+                         "     1\ta\n\n     2\tb\n")
+
+    def test_cat_n_with_line_ends(self):
+        self.assertEqual(self.execute_command(["cat", "-nE"], "a\n\n"),
+                         "     1\ta$\n     2\t$\n")
+
+    def test_cat_v_high_bytes(self):
+        self.assertEqual(self.execute_command(["cat", "-v"], "é"), "M-CM-)")
+
+    def test_invalid_utf8_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bad.bin"
+            path.write_bytes(b"\xff\xfe\xfa")
+            for name in ["cat", "wc"]:
+                with self.subTest(name=name), self.assertRaises(ExecutionError) as raised:
+                    self.execute_command([name, str(path)])
+                self.assertEqual(raised.exception.code, 1)
 
     def test_wc_selected_counts_and_order(self):
         text = "a b\n"

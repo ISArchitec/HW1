@@ -1,13 +1,15 @@
-from global_console import GlobalConsole
-from parser.parser import Parser
+from interpreter.global_console import GlobalConsole
+from parser import Parser
 from utils.exception import CliError
+from interpreter.session import Session
 
 
 class Interpreter:
     def run(self) -> None:
         running = True
         console = GlobalConsole()
-        parser = Parser()
+        session = Session()
+        parser = Parser(session)
         while running:
             try:
                 input = console.stdin.read_line()
