@@ -5,6 +5,9 @@ from stream import InStream, OutStream
 from utils.exception import ExecutionError
 
 
+CHUNK_SIZE = 8192
+
+
 class Command(ABC):
     
     def __init__(self, args: list[str], in_stream: InStream, out_stream: OutStream):
@@ -18,9 +21,13 @@ class Command(ABC):
                 yield from iter(self.in_stream.read_line, "")
             else:
                 with open(path, encoding="utf-8", newline="") as source:
-                    yield from iter(lambda: source.read(8192), "")
+                    yield from iter(lambda: source.read(CHUNK_SIZE), "")
         except (OSError, UnicodeError) as error:
             raise ExecutionError(1) from error
+
+    @staticmethod
+    def _input_paths(operands: list[str]) -> list[str | None]:
+        return list(operands) if operands else [None]
 
     def _write(self, text: str) -> None:
         try:

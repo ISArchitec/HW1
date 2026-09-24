@@ -182,6 +182,11 @@ class CommandTests(unittest.TestCase):
             (r"a\cb", "a"),
             (r"\a\b\e\f\n\r\t\v\\", "\a\b\x1b\f\n\r\t\v\\\n"),
             (r"\0101\x42", "AB\n"),
+            (r"\01012\x414", "A2A4\n"),
+            (r"\0777\0400", "\xff\0\n"),
+            (r"\08\xG", "\08\\xG\n"),
+            (r"\x4a\x4B", "JK\n"),
+            (r"\x41\cignored", "A"),
             (r"\0", "\0\n"),
             (r"\q\x", "\\q\\x\n"),
             ("hello\\", "hello\\\n"),
@@ -203,6 +208,51 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(self.execute_command(["cat", "-ET"], "a\t\nlast"), "a^I$\nlast")
         self.assertEqual(self.execute_command(["cat", "-v"], "\0\x1b\x7f\t\n"), "^@^[^?\t\n")
         self.assertEqual(self.execute_command(["cat", "-A"], "\0\t\r\n"), "^@^I^M$\n")
+
+    def test_cat_visible_utf8_bytes(self):
+        # U+00E9 is C3 A9; U+0080 is C2 80; U+07FF is DF BF in UTF-8.
+        self.assertEqual(
+            self.execute_command(["cat", "-v"], "\u00e9\u0080\u07ff\x1f \x7f"),
+            "M-CM-)M-BM-^@M-_M-?^_ ^?",
+        )
+
+    def test_unicode_counts_and_formatting_across_chunk_boundaries(self):
+        text = "a\u00e9\u4e2d\U0001f600e\u0301\tz\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "unicode.txt"
+            path.write_bytes(text.encode("utf-8"))
+            for size in [1, 2, 5, 8192]:
+                with self.subTest(chunk_size=size), patch("command.command.CHUNK_SIZE", size):
+                    self.assertEqual(self.execute_command(["cat", str(path)]), text)
+                    self.assertEqual(
+                        self.execute_command(["cat", "-nET", str(path)]),
+                        "     1\ta\u00e9\u4e2d\U0001f600e\u0301^Iz$\n",
+                    )
+                    self.assertEqual(
+                        self.execute_command(["wc", "-Lcmwl", str(path)]),
+                        f"1 2 9 16 9 {path}\n",
+                    )
+
+    def test_command_state_resets_on_each_execution(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.txt"
+            path.write_bytes(b"first\n\nlast")
+            for words, expected in [
+                (["cat", "-ns"], "     1\tfirst\n     2\t\n     3\tlast"),
+                (["wc", "-lwL"], f"2 2 5 {path}\n"),
+            ]:
+                with self.subTest(words=words):
+                    output = MemoryStream()
+                    command = CommandFactory().create([*words, str(path)], MemoryStream(), output)
+                    command.execute()
+                    command.execute()
+                    self.assertEqual(output.buffer.getvalue(), expected * 2)
+
+    def test_echo_invalid_option_group_is_entirely_text(self):
+        self.assertEqual(
+            self.execute_command(["echo", "-e", "-Enz", r"a\tb"]),
+            "-Enz a\tb\n",
+        )
 
     def test_cat_state_across_files_and_chunks(self):
         with tempfile.TemporaryDirectory() as directory:
