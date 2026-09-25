@@ -6,6 +6,7 @@ from command.utils import parse_options
 
 
 class WcOption(Enum):
+    """List the text measurements supported by the wc command."""
     LINES = "l"
     WORDS = "w"
     CHARACTERS = "m"
@@ -25,13 +26,17 @@ TAB_WIDTH = 8
 
 
 class WordCounter:
+    """Accumulate text counts and optional display widths across chunks."""
+
     def __init__(self, measure_width: bool) -> None:
+        """Initialize counters and optionally enable line width measurement."""
         self.measure_width = measure_width
         self.counts: dict[WcOption, int] = dict.fromkeys(WcOption, 0)
         self.in_word = False
         self.width = 0
 
     def consume(self, chunk: str) -> None:
+        """Update counts from a chunk, preserving word and line boundaries."""
         self.counts[WcOption.LINES] += chunk.count("\n")
         self.counts[WcOption.CHARACTERS] += len(chunk)
         self.counts[WcOption.BYTES] += len(chunk.encode("utf-8"))
@@ -57,13 +62,17 @@ class WordCounter:
             self.width += 2 if unicodedata.east_asian_width(character) in {"W", "F"} else 1
 
     def finish_line(self) -> None:
+        """Include the current line width in the maximum without resetting it."""
         self.counts[WcOption.MAX_LINE_LENGTH] = max(
             self.counts[WcOption.MAX_LINE_LENGTH], self.width
         )
 
 
 class WcCommand(Command):
+    """Count selected text metrics for files or the input stream."""
+
     def execute(self) -> None:
+        """Write counts for each input and totals when multiple inputs are given."""
         options, operands = parse_options(self.args, WcOption)
         options = options or DEFAULT_OPTIONS
         order = [option for option in OUTPUT_ORDER if option in options]

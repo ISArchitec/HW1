@@ -9,8 +9,10 @@ CHUNK_SIZE = 8192
 
 
 class Command(ABC):
+    """Define the command interface and shared stream and file helpers."""
     
     def __init__(self, args: list[str], in_stream: InStream, out_stream: OutStream):
+        """Copy command arguments and store the input and output streams."""
         self.args = args.copy()
         self.in_stream = in_stream
         self.out_stream = out_stream
@@ -37,4 +39,5 @@ class Command(ABC):
 
     @abstractmethod
     def execute(self) -> None:
+        """Run the command, raising ExecutionError on an execution failure."""
         pass

@@ -21,13 +21,17 @@ BYTE_VALUE_COUNT = 256
 
 
 class EchoOption(Enum):
+    """List the supported newline and escape handling flags for echo."""
     NO_NEWLINE = "n"
     ENABLE_ESCAPES = "e"
     DISABLE_ESCAPES = "E"
 
 
 class EchoCommand(Command):
+    """Write arguments as text with optional escape processing."""
+
     def execute(self) -> None:
+        """Write joined operands, applying escape and trailing newline options."""
         options, operands = self._parse_arguments()
         text = " ".join(operands)
         stopped = False

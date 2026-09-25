@@ -11,6 +11,7 @@ CARET_OFFSET = ord("@")
 
 
 class CatOption(Enum):
+    """List the supported short flags for the cat command."""
     NUMBER_LINES = "n"
     NUMBER_NONBLANK = "b"
     SQUEEZE_BLANK = "s"
@@ -21,13 +22,17 @@ class CatOption(Enum):
 
 
 class CatFormatter:
+    """Format cat output while preserving line state across chunks."""
+
     def __init__(self, options: set[CatOption]) -> None:
+        """Store formatting options and initialize line numbering and blank state."""
         self.options = options
         self.line_number = 1
         self.line_start = True
         self.previous_blank = False
 
     def format_chunk(self, chunk: str) -> str:
+        """Apply the selected formatting options to the next text chunk."""
         if not self.options:
             return chunk
         return "".join(self._format_character(character) for character in chunk)
@@ -78,7 +83,10 @@ class CatFormatter:
 
 
 class CatCommand(Command):
+    """Concatenate files or input stream text with optional display formatting."""
+
     def execute(self) -> None:
+        """Parse cat options and write formatted input to the output stream."""
         options, operands = parse_options(self.args, CatOption)
         if CatOption.SHOW_ALL in options:
             options.update({CatOption.SHOW_NONPRINTING, CatOption.SHOW_ENDS, CatOption.SHOW_TABS})

@@ -5,8 +5,10 @@ from utils.exception import ExecutionError
 
 
 class ExecCommand(Command):
+    """Run an external program using the parent process's standard streams."""
 
     def execute(self) -> None:
+        """Launch the program and map launch or exit failures to ExecutionError."""
         try:
             result = subprocess.run(self.args)
         except FileNotFoundError as error:
