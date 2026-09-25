@@ -2,6 +2,8 @@ from stream import InStream, OutStream, Console
 
 
 class GlobalConsole:
+    """Represents console for interpreter, in which it interacts with user"""
+
     stdin: InStream
     stdout: OutStream
     stderr: OutStream

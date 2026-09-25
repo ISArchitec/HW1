@@ -2,6 +2,7 @@ from stream import InStream, OutStream
 
 
 class Console(InStream, OutStream):
+    """Stream, that represents basic input/output to terminal"""
     def __init__(self):
         self.buffer = str()
         self.buffer_index = 0

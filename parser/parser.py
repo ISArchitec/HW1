@@ -16,12 +16,14 @@ class ParsingMode(Enum):
 
 
 class Parser:
+    """Class, that parses line from interpreter into sentence sequence"""
     __session: Session
 
     def __init__(self, session: Session):
         self.__session = session
 
     def parse(self, string: str) -> SentenceSequence:
+        """Main method of class, that parses line into sentence sequence"""
         sequence = SentenceSequence()
         sentences = self.__parse_pipes(string)
         for sentence in sentences:
