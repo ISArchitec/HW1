@@ -8,6 +8,7 @@ Option = TypeVar("Option", bound=Enum)
 
 
 def parse_options(args: list[str], option_type: type[Option]) -> tuple[set[Option], list[str]]:
+    """Parse short flags and operands, honoring -- and rejecting unknown flags."""
     options: set[Option] = set()
     operands: list[str] = []
     parse_flags = True
