@@ -5,7 +5,10 @@ from interpreter.session import Session
 
 
 class Interpreter:
+    """Manages all processes in interpreter. It reads users inputs, process it, and writes output"""
+
     def run(self) -> None:
+        """Main program loop"""
         running = True
         console = GlobalConsole()
         session = Session()

@@ -1,8 +1,8 @@
-from typing import Self
 from sentence import SentenceSequence, Sentence, Word
 from enum import Enum, auto
 from interpreter.session import Session
 from utils.exception import ParserError
+
 
 class ParsingMode(Enum):
     # simple token parsing
@@ -14,13 +14,16 @@ class ParsingMode(Enum):
     # skip whitespaces between words
     SKIP = auto()
 
+
 class Parser:
+    """Class, that parses line from interpreter into sentence sequence"""
     __session: Session
 
-    def __init__(self: Self, session: Session):
+    def __init__(self, session: Session):
         self.__session = session
 
-    def parse(self: Self, string: str) -> SentenceSequence:
+    def parse(self, string: str) -> SentenceSequence:
+        """Main method of class, that parses line into sentence sequence"""
         sequence = SentenceSequence()
         sentences = self.__parse_pipes(string)
         for sentence in sentences:
@@ -28,14 +31,14 @@ class Parser:
             sequence.add_sentence(self.__make_sentence(words))
         return sequence
 
-    def __parse_pipes(self: Self, string: str) -> list[str]:
+    def __parse_pipes(self, string: str) -> list[str]:
         string = string.strip()
         if len(string) == 0:
             return []
         else:
             return [string]
 
-    def __parse_whitespaces(self: Self, sentence: str) -> list[str]:
+    def __parse_whitespaces(self, sentence: str) -> list[str]:
         result = []
         parsing_mode = ParsingMode.SKIP
         for symbol in sentence:
@@ -74,8 +77,8 @@ class Parser:
             raise ParserError("Sentence couldn't be empty")
         return result
 
-    def __make_sentence(self: Self, words: list[str]) -> Sentence:
+    def __make_sentence(self, words: list[str]) -> Sentence:
         return Sentence(list(map(self.__parse_element, words)))
 
-    def __parse_element(self: Self, word: str) -> Word:
+    def __parse_element(self, word: str) -> Word:
         return Word(word)

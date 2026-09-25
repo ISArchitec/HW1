@@ -1,8 +1,8 @@
-from typing import Self
-
 class Session:
-    def get(self: Self, key: str) -> str:
+    """Storage for environmental variables and other session-specific parameters"""
+
+    def get(self, key: str) -> str:
         raise NotImplementedError()
 
-    def set(self: Self, key: str, value:  str):
+    def set(self, key: str, value:  str):
         raise NotImplementedError()

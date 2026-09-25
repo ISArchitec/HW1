@@ -33,11 +33,8 @@ def test_empty_sequence_executes_nothing():
     SentenceSequence().execute()
 
 
-@pytest.mark.xfail(strict=True, raises=TypeError,
-                   reason="bug #1: SentenceSequence.execute doesn't pass streams")
-def test_sequence_executes_sentences():
-    out = MemoryStream()
+def test_sequence_executes_sentences(capsys):
     sequence = SentenceSequence()
     sequence.add_sentence(Sentence([Word("echo"), Word("hi")]))
-    sequence.execute(MemoryStream(), out)
-    assert out.buffer.getvalue() == "hi\n"
+    sequence.execute()
+    assert capsys.readouterr().out == "hi\n"
