@@ -1,4 +1,5 @@
 from sentence.sentence import Sentence
+from stream import Console
 
 
 class SentenceSequence:
@@ -20,5 +21,6 @@ class SentenceSequence:
         return self.__sentence[key]
 
     def execute(self) -> None:
+        console = Console()
         for sentence in self.__sentence:
-            sentence.execute()
+            sentence.execute(console, console)

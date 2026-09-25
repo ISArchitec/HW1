@@ -10,7 +10,9 @@ class Console(InStream, OutStream):
         if self.buffer_index >= len(self.buffer):
             self.buffer = input()
             self.buffer_index = 0
-        return self.buffer[self.buffer_index]
+        index = self.buffer_index
+        self.buffer_index += 1
+        return self.buffer[index]
 
     def read_line(self) -> str:
         index = self.buffer_index
@@ -20,4 +22,4 @@ class Console(InStream, OutStream):
         return self.buffer[index:]
 
     def write(self, string: str) -> None:
-        print(string)
+        print(string, end='')
