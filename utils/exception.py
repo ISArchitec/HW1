@@ -10,5 +10,6 @@ class ParserError(CliError):
 
 
 class ExecutionError(CliError):
-    def __init__(self, code):
+    def __init__(self, code: int):
+        self.code = code
         super().__init__(f"Command exited with non-zero code {code}")
