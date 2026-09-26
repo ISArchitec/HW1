@@ -1,6 +1,5 @@
-from sentence import SentenceSequence, Sentence, Word
+from sentence import SentenceSequence, Sentence, Word, Session
 from enum import Enum, auto
-from interpreter.session import Session
 from utils.exception import ParserError
 
 
@@ -24,7 +23,7 @@ class Parser:
 
     def parse(self, string: str) -> SentenceSequence:
         """Main method of class, that parses line into sentence sequence"""
-        sequence = SentenceSequence()
+        sequence = SentenceSequence(self.__session)
         sentences = self.__parse_pipes(string)
         for sentence in sentences:
             words = self.__parse_whitespaces(sentence)
@@ -78,7 +77,7 @@ class Parser:
         return result
 
     def __make_sentence(self, words: list[str]) -> Sentence:
-        return Sentence(list(map(self.__parse_element, words)))
+        return Sentence([], list(map(self.__parse_element, words)))
 
     def __parse_element(self, word: str) -> Word:
         return Word(word)
