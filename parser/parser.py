@@ -1,4 +1,5 @@
 from sentence import SentenceSequence, Sentence, Word
+from sentence import Assignment
 from utils.session import Session
 from enum import Enum, auto
 from utils.exception import ParserError
@@ -78,7 +79,27 @@ class Parser:
         return result
 
     def __make_sentence(self, words: list[str]) -> Sentence:
-        return Sentence([], list(map(self.__parse_element, words)))
+        assignments = []
+        command_words = []
+        for (i, word) in enumerate(words):
+            if not isinstance(parsing_result:=self.__parse_element(word), Assignment):
+                command_words = list(map(self.__parse_word, words[i:]))
+                break
+            assignments.append(parsing_result)
+        return Sentence(assignments, command_words)
 
-    def __parse_element(self, word: str) -> Word:
+    def __parse_word(self, word: str) -> Word:
         return Word(word)
+
+    def __parse_element(self, word: str) -> Assignment | Word:
+        for (i, symbol) in enumerate(word):
+            if not self.__is_token_symbol(symbol, i):
+                if symbol != '=' or i == 0:
+                    return Word(word)
+                else:
+                    return Assignment(word[:i], Word(word[i + 1:]))
+        return Word(word)
+
+    @staticmethod
+    def __is_token_symbol(symbol: str, position: int):
+        return symbol.isalpha() or symbol == "_" or (symbol.isdecimal() and position > 0)
