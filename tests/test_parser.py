@@ -69,9 +69,8 @@ def test_parser_no_sequence_on_empty_source():
 def parse_assignments(source: str) -> list[tuple[str, str]]:
     parser = Parser(session=EMPTY_SESSION)
     sequence = parser.parse(source)
-
     assert len(sequence) == 1
-    return [(a.name, a.value) for a in sequence[0].assignments]
+    return [(a.key, a.value) for a in sequence[0].assignments]
 
 
 @pytest.mark.parametrize(
