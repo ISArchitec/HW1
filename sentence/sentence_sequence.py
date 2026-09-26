@@ -13,7 +13,7 @@ class SentenceSequence:
         self.session = session
 
     def add_sentence(self, sentence: Sentence) -> None:
-        "adds sentence in sequence"
+        """Adds sentence in sequence"""
         self.__sentence.append(sentence)
 
     def __iter__(self):
