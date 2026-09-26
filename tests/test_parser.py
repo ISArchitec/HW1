@@ -65,3 +65,49 @@ def test_parser_no_sequence_on_empty_source():
     parser = Parser(session=EMPTY_SESSION)
     sequence = parser.parse("")
     assert len(sequence) == 0
+
+def parse_assignments(source: str) -> list[tuple[str, str]]:
+    parser = Parser(session=EMPTY_SESSION)
+    sequence = parser.parse(source)
+
+    assert len(sequence) == 1
+    return [(a.name, a.value) for a in sequence[0].assignments]
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("X=1", [("X", "1")]),
+        ("NAME=hello", [("NAME", "hello")]),
+        ("_=v", [("_", "v")]),
+        ("VAR1=abc", [("VAR1", "abc")]),
+        ("A_B_C=xyz", [("A_B_C", "xyz")]),
+        ("X=1 Y=2", [("X", "1"), ("Y", "2")]),
+        ("A=1 B=2 C=3", [("A", "1"), ("B", "2"), ("C", "3")]),
+        ("  X=1   Y=2  ", [("X", "1"), ("Y", "2")]),
+        ("X=", [("X", "")]),
+        ("X=a=b", [("X", "a=b")]),
+        ("X==", [("X", "=")]),
+        ("X='hello world'", [("X", "hello world")]),
+        ('X="hello world"', [("X", "hello world")]),
+        ("X=''", [("X", "")]),
+        ('X=""', [("X", "")]),
+        ("X='a=b'", [("X", "a=b")]),
+        ('X="a=b"', [("X", "a=b")]),
+        ("X=/usr/bin", [("X", "/usr/bin")]),
+        ("X=*.txt", [("X", "*.txt")]),
+        ("X=$HOME", [("X", "$HOME")]),
+        ("X=1 echo", [("X", "1")]),
+        ("X=1 Y=2 echo hello", [("X", "1"), ("Y", "2")]),
+        ("X=1 echo Y=2", [("X", "1")]),
+        ("echo X=1", []),
+        ("echo hello world", []),
+        ("echo", []),
+        ("X=1 echo 'hello world'", [("X", "1")]),
+        ("X = 1", []),
+        ("X =1", []),
+        ("X= 1", [("X", "")]),
+    ],
+)
+def test_parser_parses_assignments(source: str, expected: list[tuple[str, str]]) -> None:
+    assert parse_assignments(source) == expected
