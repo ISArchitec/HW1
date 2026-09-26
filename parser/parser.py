@@ -1,0 +1,105 @@
+from sentence import SentenceSequence, Sentence, Word
+from sentence import Assignment
+from utils.session import Session
+from enum import Enum, auto
+from utils.exception import ParserError
+
+
+class ParsingMode(Enum):
+    # simple token parsing
+    NORMAL = auto()
+    # '...'
+    QUOTED = auto()
+    # "..."
+    DOUBLE_QUOTED = auto()
+    # skip whitespaces between words
+    SKIP = auto()
+
+
+class Parser:
+    """Class, that parses line from interpreter into sentence sequence"""
+    __session: Session
+
+    def __init__(self, session: Session):
+        self.__session = session
+
+    def parse(self, string: str) -> SentenceSequence:
+        """Main method of class, that parses line into sentence sequence"""
+        sequence = SentenceSequence(self.__session)
+        sentences = self.__parse_pipes(string)
+        for sentence in sentences:
+            words = self.__parse_whitespaces(sentence)
+            sequence.add_sentence(self.__make_sentence(words))
+        return sequence
+
+    def __parse_pipes(self, string: str) -> list[str]:
+        string = string.strip()
+        if len(string) == 0:
+            return []
+        else:
+            return [string]
+
+    def __parse_whitespaces(self, sentence: str) -> list[str]:
+        result = []
+        parsing_mode = ParsingMode.SKIP
+        for symbol in sentence:
+            if parsing_mode == ParsingMode.SKIP:
+                if symbol == '\'':
+                    parsing_mode = ParsingMode.QUOTED
+                    result.append('')
+                elif symbol == '\"':
+                    parsing_mode = ParsingMode.DOUBLE_QUOTED
+                    result.append('')
+                elif not symbol.isspace():
+                    parsing_mode = ParsingMode.NORMAL
+                    result.append(symbol)
+            elif parsing_mode == ParsingMode.QUOTED:
+                if symbol == '\'':
+                    parsing_mode = ParsingMode.NORMAL
+                else:
+                    result[-1] += symbol
+            elif parsing_mode == ParsingMode.DOUBLE_QUOTED:
+                if symbol == '\"':
+                    parsing_mode = ParsingMode.NORMAL
+                else:
+                    result[-1] += symbol
+            else:
+                if symbol.isspace():
+                    parsing_mode = ParsingMode.SKIP
+                elif symbol == '\'':
+                    parsing_mode = ParsingMode.QUOTED
+                elif symbol == '\"':
+                    parsing_mode = ParsingMode.DOUBLE_QUOTED
+                else:
+                    result[-1] += symbol
+        if parsing_mode in (ParsingMode.QUOTED, ParsingMode.DOUBLE_QUOTED):
+            raise ParserError("Unclosed quote")
+        if len(result) == 0:
+            raise ParserError("Sentence couldn't be empty")
+        return result
+
+    def __make_sentence(self, words: list[str]) -> Sentence:
+        assignments = []
+        command_words = []
+        for (i, word) in enumerate(words):
+            if not isinstance(parsing_result:=self.__parse_element(word), Assignment):
+                command_words = list(map(self.__parse_word, words[i:]))
+                break
+            assignments.append(parsing_result)
+        return Sentence(assignments, command_words)
+
+    def __parse_word(self, word: str) -> Word:
+        return Word(word)
+
+    def __parse_element(self, word: str) -> Assignment | Word:
+        for (i, symbol) in enumerate(word):
+            if not self.__is_token_symbol(symbol, i):
+                if symbol != '=' or i == 0:
+                    return Word(word)
+                else:
+                    return Assignment(word[:i], Word(word[i + 1:]))
+        return Word(word)
+
+    @staticmethod
+    def __is_token_symbol(symbol: str, position: int):
+        return symbol.isalpha() or symbol == "_" or (symbol.isdecimal() and position > 0)
