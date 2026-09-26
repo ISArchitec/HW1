@@ -110,3 +110,41 @@ def parse_assignments(source: str) -> list[tuple[str, str]]:
 )
 def test_parser_parses_assignments(source: str, expected: list[tuple[str, str]]) -> None:
     assert parse_assignments(source) == expected
+
+def parse(source: str) -> tuple[list[tuple[str, str]], list[str]]:
+    """Parse `source` и вернуть (assignments, words) единственного предложения."""
+    sequence = Parser(session=EMPTY_SESSION).parse(source)
+    assert len(sequence) == 1
+    sentence = sequence[0]
+    assignments = [(a.key, a.value) for a in sentence.assignments]
+    words = [w.word for w in sentence.words]
+    return assignments, words
+
+
+@pytest.mark.parametrize(
+    "source, expected_assignments, expected_words",
+    [
+        ("  echo   hello  ", [], ["echo", "hello"]),
+        ("  X=1   Y=2  ", [("X", "1"), ("Y", "2")], []),
+        ("X=1 echo 'hello world'", [("X", "1")], ["echo", "hello world"]),
+        ("echo X=1", [], ["echo", "X=1"]),
+        ("echo hello X=1", [], ["echo", "hello", "X=1"]),
+        ("X=1 echo Y=2", [("X", "1")], ["echo", "Y=2"]),
+        ("X=1 Y=2 echo Z=3", [("X", "1"), ("Y", "2")], ["echo", "Z=3"]),
+        ("X= 1", [("X", "")], ["1"]),
+        ("1X=1", [], ["1X=1"]),
+        ("X1=1", [("X1", "1")], []),
+        ("X-Y=1", [], ["X-Y=1"]),
+        ("=1", [], ["=1"]),
+        ("X@Y=1", [], ["X@Y=1"]),
+        ("_X=1", [("_X", "1")], []),
+    ],
+)
+def test_parser_assignments_and_words(
+    source: str,
+    expected_assignments: list[tuple[str, str]],
+    expected_words: list[str],
+) -> None:
+    assignments, words = parse(source)
+    assert assignments == expected_assignments
+    assert words == expected_words

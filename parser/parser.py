@@ -80,12 +80,12 @@ class Parser:
 
     def __make_sentence(self, words: list[str]) -> Sentence:
         assignments = []
-        i = 0
+        command_words = []
         for (i, word) in enumerate(words):
             if not isinstance(parsing_result:=self.__parse_element(word), Assignment):
+                command_words = list(map(self.__parse_word, words[i:]))
                 break
             assignments.append(parsing_result)
-        command_words = list(map(self.__parse_word, words[i:]))
         return Sentence(assignments, command_words)
 
     def __parse_word(self, word: str) -> Word:
