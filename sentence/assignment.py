@@ -4,7 +4,7 @@ import os
 
 
 class Assignment:
-    def __init__(self, key: str, value: Word): # TODO(verbinna22): must be word
+    def __init__(self, key: str, value: Word):
         self.__key = key
         self.__value = value
 

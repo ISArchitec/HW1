@@ -70,7 +70,7 @@ def parse_assignments(source: str) -> list[tuple[str, str]]:
     parser = Parser(session=EMPTY_SESSION)
     sequence = parser.parse(source)
     assert len(sequence) == 1
-    return [(a.key, a.value) for a in sequence[0].assignments]
+    return [(a.key, a.value.word) for a in sequence[0].assignments]
 
 
 @pytest.mark.parametrize(
@@ -116,7 +116,7 @@ def parse(source: str) -> tuple[list[tuple[str, str]], list[str]]:
     sequence = Parser(session=EMPTY_SESSION).parse(source)
     assert len(sequence) == 1
     sentence = sequence[0]
-    assignments = [(a.key, a.value) for a in sentence.assignments]
+    assignments = [(a.key, a.value.word) for a in sentence.assignments]
     words = [w.word for w in sentence.words]
     return assignments, words
 

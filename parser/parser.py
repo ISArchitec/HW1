@@ -97,7 +97,7 @@ class Parser:
                 if symbol != '=' or i == 0:
                     return Word(word)
                 else:
-                    return Assignment(word[:i], word[i + 1:])
+                    return Assignment(word[:i], Word(word[i + 1:]))
         return Word(word)
 
     @staticmethod
