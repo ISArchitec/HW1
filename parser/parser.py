@@ -93,9 +93,13 @@ class Parser:
 
     def __parse_element(self, word: str) -> Assignment | Word:
         for (i, symbol) in enumerate(word):
-            if not symbol.isalnum() and symbol != '_':
+            if not self.__is_token_symbol(symbol, i):
                 if symbol != '=' or i == 0:
                     return Word(word)
                 else:
                     return Assignment(word[:i], word[i + 1:])
         return Word(word)
+
+    @staticmethod
+    def __is_token_symbol(symbol: str, position: int):
+        return symbol.isalpha() or symbol == "_" or (symbol.isdecimal() and position > 0)
