@@ -94,7 +94,7 @@ class Parser:
     def __parse_element(self, word: str) -> Assignment | Word:
         for (i, symbol) in enumerate(word):
             if not symbol.isalnum() and symbol != '_':
-                if symbol != '=':
+                if symbol != '=' or i == 0:
                     return Word(word)
                 else:
                     return Assignment(word[:i], word[i + 1:])
