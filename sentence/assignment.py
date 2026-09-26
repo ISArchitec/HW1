@@ -5,11 +5,23 @@ import os
 
 class Assignment:
     def __init__(self, key: str, value: Word):
-        self.key = key
-        self.value = value
+        self.__key = key
+        self.__value = value
+
+    @property
+    def key(self) -> str:
+        """Readonly access to assignment key"""
+        return self.__key
+
+    @property
+    def value(self) -> Word:
+        """Readonly access to assignment value"""
+        return self.__value
 
     def execute(self, session: Session):
-        session.set(self.key, self.value.word)
+        """Changes session"""
+        session.set(self.__key, self.__value.word)
 
     def apply_globally(self):
-        os.environ[self.key] = self.value.word
+        """Changes global os environment"""
+        os.environ[self.__key] = self.__value.word
