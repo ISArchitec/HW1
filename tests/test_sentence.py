@@ -11,7 +11,7 @@ def test_sentence_copies_words():
     words = [Word("echo")]
     sentence = Sentence([], words)
     words.append(Word("x"))
-    assert [w.word for w in sentence.words] == ["echo"]
+    assert [w.word for w in sentence.__words] == ["echo"]
     assert sentence.has_words()
     assert not Sentence([], []).has_words()
 
