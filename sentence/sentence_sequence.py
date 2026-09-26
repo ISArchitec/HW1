@@ -1,4 +1,5 @@
 from sentence.sentence import Sentence
+from utils.session import Session
 from stream import Console
 
 
@@ -7,8 +8,9 @@ class SentenceSequence:
 
     __sentence: list[Sentence]
 
-    def __init__(self):
+    def __init__(self, session: Session):
         self.__sentence = []
+        self.session = session
 
     def add_sentence(self, sentence: Sentence) -> None:
         self.__sentence.append(sentence)
@@ -26,4 +28,4 @@ class SentenceSequence:
         """Executing all commands, that sequence represents"""
         console = Console()
         for sentence in self.__sentence:
-            sentence.execute(console, console)
+            sentence.execute(self.session, console, console)

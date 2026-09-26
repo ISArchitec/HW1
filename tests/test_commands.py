@@ -9,16 +9,19 @@ from command.command_factory import CommandFactory
 from command.builtins import EchoCommand
 from command.exec_command import ExecCommand
 from utils.exception import ExecutionError
+from utils.session import Session
 from tests.helpers import MemoryStream
 
 
 class CommandTests(unittest.TestCase):
+    session = Session()
+
     def test_output_errors_become_execution_errors(self):
         error = OSError("write failed")
         for words in [["cat"], ["cat", "-n"], ["echo", "hello"], ["wc"], ["pwd"]]:
             with self.subTest(words=words):
                 source, output = MemoryStream("hello\n"), MemoryStream()
-                command = CommandFactory().create(words, source, output)
+                command = CommandFactory().create(words, source, output, self.session)
                 with patch.object(output, "write", side_effect=error):
                     with self.assertRaises(ExecutionError) as raised:
                         command.execute()
@@ -26,7 +29,7 @@ class CommandTests(unittest.TestCase):
 
     def execute_command(self, words, text=""):
         source, output = MemoryStream(text), MemoryStream()
-        CommandFactory().create(words, source, output).execute()
+        CommandFactory().create(words, source, output, self.session).execute()
         return output.buffer.getvalue()
 
     def test_pwd(self):
@@ -39,14 +42,14 @@ class CommandTests(unittest.TestCase):
                 self.execute_command(["pwd"])
 
     def test_exit(self):
-        command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream())
+        command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream(), self.session)
         with self.assertRaises(SystemExit) as raised:
             command.execute()
         self.assertEqual(raised.exception.code, 0)
 
     def test_factory_selects_external_command(self):
         command = CommandFactory().create(
-            ["external-program"], MemoryStream(), MemoryStream()
+            ["external-program"], MemoryStream(), MemoryStream(), self.session
         )
         self.assertIsInstance(command, ExecCommand)
 
@@ -89,7 +92,7 @@ class CommandTests(unittest.TestCase):
     def test_factory_creates_without_executing_and_copies_arguments(self):
         output = MemoryStream()
         words = ["echo", "original"]
-        command = CommandFactory().create(words, MemoryStream(), output)
+        command = CommandFactory().create(words, MemoryStream(), output, self.session)
         self.assertIsInstance(command, EchoCommand)
         self.assertEqual(output.buffer.getvalue(), "")
         words[1] = "changed"
@@ -228,7 +231,7 @@ class CommandTests(unittest.TestCase):
             ]:
                 with self.subTest(words=words):
                     output = MemoryStream()
-                    command = CommandFactory().create([*words, str(path)], MemoryStream(), output)
+                    command = CommandFactory().create([*words, str(path)], MemoryStream(), output, self.session)
                     command.execute()
                     command.execute()
                     self.assertEqual(output.buffer.getvalue(), expected * 2)

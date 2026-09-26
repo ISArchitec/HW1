@@ -2,6 +2,7 @@ from stream import InStream, OutStream
 from command.command import Command
 from command.builtins import CatCommand, EchoCommand, WcCommand, PwdCommand, ExitCommand
 from command.exec_command import ExecCommand
+from utils.session import Session
 
 
 class CommandFactory:
@@ -16,11 +17,11 @@ class CommandFactory:
     }
 
     def create(
-        self, words: list[str], in_stream: InStream, out_stream: OutStream
+        self, words: list[str], in_stream: InStream, out_stream: OutStream, session: Session
     ) -> Command:
         """Build a command from a nonempty word list and the supplied streams."""
         name, *args = words
         command_type = self._commands.get(name)
         if command_type is None:
-            return ExecCommand(words, in_stream, out_stream)
+            return ExecCommand(words, in_stream, out_stream, session)
         return command_type(args, in_stream, out_stream)
