@@ -1,7 +1,7 @@
 from interpreter.global_console import GlobalConsole
 from parser import Parser
 from utils.exception import CliError
-from sentence import Session
+from utils.session import Session
 
 
 class Interpreter:

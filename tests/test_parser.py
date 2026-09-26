@@ -1,7 +1,7 @@
 import pytest
 
 from parser import Parser
-from sentence import Session
+from utils.session import Session
 from utils.exception import ParserError
 
 EMPTY_SESSION = Session()

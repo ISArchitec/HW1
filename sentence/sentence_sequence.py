@@ -1,5 +1,5 @@
 from sentence.sentence import Sentence
-from sentence.session import Session
+from utils.session import Session
 from stream import Console
 
 

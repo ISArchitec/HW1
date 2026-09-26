@@ -1,6 +1,6 @@
 from sentence.word import Word
 from sentence.assignment import Assignment
-from sentence.session import Session
+from utils.session import Session
 from stream import InStream, OutStream
 from command import CommandFactory
 
@@ -19,20 +19,18 @@ class Sentence:
 
     def execute(self, session: Session, in_stream: InStream, out_stream: OutStream):
         """Executing command, that this sentence describe"""
+        local_session = session.copy()
         for assignment in self.assignments:
             if self.has_words():
-                self._remember_assignment(assignment, session)
-            assignment.execute(session)
-            assignment.apply_globally()
+                assignment.execute(local_session)
+            else:
+                assignment.apply_globally()
+                assignment.execute(session)
+        result_session = local_session if self.has_words() else session
         if self.has_words():
-            CommandFactory().create(list(map(lambda word: word.word, self.words)), in_stream, out_stream).execute()
-        self._revert_assignments(session)
+            CommandFactory().create(
+                list(map(lambda word: word.word, self.words)), in_stream, out_stream, result_session
+            ).execute()
 
     def _remember_assignment(self, assignment: Assignment, session: Session):
         self.reverted_assignments.append(Assignment(assignment.key, Word(session.get(assignment.key))))
-
-    def _revert_assignments(self, session: Session):
-        while self.reverted_assignments:
-            self.reverted_assignments[-1].apply_globally()
-            self.reverted_assignments[-1].execute(session)
-            self.reverted_assignments.pop()

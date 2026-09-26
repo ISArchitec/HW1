@@ -1,6 +1,7 @@
 from sentence.word import Word
-from sentence.session import Session
+from utils.session import Session
 import os
+
 
 class Assignment:
     def __init__(self, key: str, value: Word):

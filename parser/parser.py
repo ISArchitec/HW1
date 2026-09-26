@@ -1,4 +1,5 @@
-from sentence import SentenceSequence, Sentence, Word, Session
+from sentence import SentenceSequence, Sentence, Word
+from utils.session import Session
 from enum import Enum, auto
 from utils.exception import ParserError
 

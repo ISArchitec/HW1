@@ -2,7 +2,8 @@ import os
 
 import pytest
 
-from sentence import Sentence, SentenceSequence, Word, Session, Assignment
+from sentence import Sentence, SentenceSequence, Word, Assignment
+from utils.session import Session
 from tests.helpers import MemoryStream
 
 
@@ -57,6 +58,7 @@ def test_global_assignment_changes_session():
 
 
 def test_local_assignment_not_changes_session():
+    os.environ["X"] = ""
     stream = MemoryStream()
     session = Session()
     sentence = Sentence([Assignment("X", Word("Y"))], [Word("echo"), Word("hi")])
