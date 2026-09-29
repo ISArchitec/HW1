@@ -30,7 +30,7 @@ class EchoOption(Enum):
 class EchoCommand(Command):
     """Write arguments as text with optional escape processing."""
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Write joined operands, applying escape and trailing newline options."""
         options, operands = self._parse_arguments()
         text = " ".join(operands)
@@ -38,7 +38,7 @@ class EchoCommand(Command):
         if EchoOption.ENABLE_ESCAPES in options:
             text, stopped = self._expand_escapes(text)
         newline = not stopped and EchoOption.NO_NEWLINE not in options
-        self._write(text + ("\n" if newline else ""))
+        await self._write(text + ("\n" if newline else ""))
 
     def _parse_arguments(self) -> tuple[set[EchoOption], list[str]]:
         enabled: set[EchoOption] = set()

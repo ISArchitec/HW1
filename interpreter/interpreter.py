@@ -1,13 +1,13 @@
 from interpreter.global_console import GlobalConsole
 from parser import Parser
-from utils.exception import CliError
+from utils.exception import CliError, ExitInterrupt
 from utils.session import Session
 
 
 class Interpreter:
     """Manages all processes in interpreter. It reads users inputs, process it, and writes output"""
 
-    def run(self) -> None:
+    async def run(self) -> None:
         """Main program loop"""
         running = True
         console = GlobalConsole()
@@ -15,9 +15,11 @@ class Interpreter:
         parser = Parser(session)
         while running:
             try:
-                input = console.stdin.read_line()
+                input = await console.stdin.read_line()
                 sequence = parser.parse(input)
-                sequence.execute()
+                await sequence.execute()
+            except ExitInterrupt:
+                running = False
             except CliError as e:
                 print(e)
             except Exception as e:

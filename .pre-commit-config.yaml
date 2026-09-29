@@ -30,3 +30,4 @@ repos:
           - nodejs-wheel-binaries==24.19.0
           - pytest==9.1.1
           - pytest-cov==7.1.0
+          - aioconsole==0.8.2

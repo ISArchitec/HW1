@@ -16,7 +16,7 @@ class ExecCommand(Command):
         super().__init__(args, in_stream, out_stream)
         self.session = session
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Launch the program and map launch or exit failures to ExecutionError."""
         try:
             sub_env = os.environ.copy()

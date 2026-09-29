@@ -85,12 +85,12 @@ class CatFormatter:
 class CatCommand(Command):
     """Concatenate files or input stream text with optional display formatting."""
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Parse cat options and write formatted input to the output stream."""
         options, operands = parse_options(self.args, CatOption)
         if CatOption.SHOW_ALL in options:
             options.update({CatOption.SHOW_NONPRINTING, CatOption.SHOW_ENDS, CatOption.SHOW_TABS})
         formatter = CatFormatter(options)
         for path in self._input_paths(operands):
-            for chunk in self._read_chunks(path):
-                self._write(formatter.format_chunk(chunk))
+            async for chunk in self._read_chunks(path):
+                await self._write(formatter.format_chunk(chunk))
