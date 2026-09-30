@@ -21,6 +21,9 @@ select = [
     "RUF", # ruff-specific rules
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"] # package public API re-exports
+
 [tool.ruff.lint.isort]
 known-first-party = ["command", "interpreter", "parser", "sentence", "stream", "utils"]
 

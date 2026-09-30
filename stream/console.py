@@ -1,10 +1,12 @@
-from stream import InStream, OutStream
+from stream.in_stream import InStream
+from stream.out_stream import OutStream
 
 
 class Console(InStream, OutStream):
     """Stream, that represents basic input/output to terminal"""
+
     def __init__(self):
-        self.buffer = str()
+        self.buffer = ""
         self.buffer_index = 0
 
     def read_char(self) -> str:
@@ -23,4 +25,4 @@ class Console(InStream, OutStream):
         return self.buffer[index:]
 
     def write(self, string: str) -> None:
-        print(string, end='')
+        print(string, end="")

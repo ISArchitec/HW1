@@ -1,14 +1,16 @@
-from stream import InStream, OutStream
+from typing import ClassVar
+
+from command.builtins import CatCommand, EchoCommand, ExitCommand, PwdCommand, WcCommand
 from command.command import Command
-from command.builtins import CatCommand, EchoCommand, WcCommand, PwdCommand, ExitCommand
 from command.exec_command import ExecCommand
+from stream import InStream, OutStream
 from utils.session import Session
 
 
 class CommandFactory:
     """Create built-in commands or fall back to an external program."""
-    
-    _commands: dict[str, type[Command]] = {
+
+    _commands: ClassVar[dict[str, type[Command]]] = {
         "cat": CatCommand,
         "echo": EchoCommand,
         "wc": WcCommand,

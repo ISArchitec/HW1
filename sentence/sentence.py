@@ -1,8 +1,8 @@
-from sentence.word import Word
-from sentence.assignment import Assignment
-from utils.session import Session
-from stream import InStream, OutStream
 from command import CommandFactory
+from sentence.assignment import Assignment
+from sentence.word import Word
+from stream import InStream, OutStream
+from utils.session import Session
 
 
 class Sentence:
@@ -38,5 +38,8 @@ class Sentence:
         result_session = local_session if self.has_words() else session
         if self.has_words():
             CommandFactory().create(
-                list(map(lambda word: word.word, self.__words)), in_stream, out_stream, result_session
+                [word.word for word in self.__words],
+                in_stream,
+                out_stream,
+                result_session,
             ).execute()

@@ -1,4 +1,4 @@
-from stream import InStream, OutStream, Console
+from stream import Console, InStream, OutStream
 
 
 class GlobalConsole:

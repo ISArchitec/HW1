@@ -1,7 +1,6 @@
 from unittest.mock import patch
-import pytest
 
-from stream import Console, InStream, OutStream
+from stream import Console
 
 
 def test_read_line_reads_from_input():
