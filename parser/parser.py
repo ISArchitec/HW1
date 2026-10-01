@@ -16,6 +16,23 @@ class ParsingMode(Enum):
     SKIP = auto()
 
 
+class PipeRecognitionMode(Enum):
+    # simple symbol parsing
+    NORMAL = auto()
+    # '...'
+    QUOTED = auto()
+    # "..."
+    DOUBLE_QUOTED = auto()
+
+
+class SubstitutionMode(Enum):
+    # simple symbol parsing
+    NORMAL = auto()
+    IGNORE_DOLLAR = auto()
+    POST_DOLLAR = auto()
+    READ_TOKEN_NORMAL = auto()
+    READ_TOKEN_IN_BRACES = auto()
+
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
     __session: Session
@@ -28,7 +45,7 @@ class Parser:
         sequence = SentenceSequence(self.__session)
         sentences = self.__parse_pipes(string)
         for sentence in sentences:
-            words = self.__parse_whitespaces(sentence)
+            words = self.__parse_whitespaces(self.__substitute(sentence))
             sequence.add_sentence(self.__make_sentence(words))
         return sequence
 
@@ -36,8 +53,78 @@ class Parser:
         string = string.strip()
         if len(string) == 0:
             return []
-        else:
-            return [string]
+        pipe_sequences = [""]
+        mode = PipeRecognitionMode.NORMAL
+        for symbol in string:
+            if mode == PipeRecognitionMode.NORMAL:
+                if symbol == '|':
+                    pipe_sequences.append("")
+                else:
+                    pipe_sequences[-1] += symbol
+                    if symbol == "'":
+                        mode = PipeRecognitionMode.QUOTED
+                    elif symbol == '"':
+                        mode = PipeRecognitionMode.DOUBLE_QUOTED
+            elif mode == PipeRecognitionMode.QUOTED:
+                pipe_sequences[-1] += symbol
+                if symbol == "'":
+                    mode = PipeRecognitionMode.NORMAL
+            else:
+                pipe_sequences[-1] += symbol
+                if symbol == '"':
+                    mode = PipeRecognitionMode.NORMAL
+        return pipe_sequences
+
+    def __substitute(self, sentence: str) -> str:
+        mode = SubstitutionMode.NORMAL
+        substituted = ""
+        token = ""
+        for i, symbol in enumerate(sentence):
+            if mode == SubstitutionMode.NORMAL:
+                if symbol == "$" and i + 1 != len(sentence):
+                    mode = SubstitutionMode.POST_DOLLAR
+                elif symbol == "\\" and i + 1 != len(sentence):
+                    mode = SubstitutionMode.IGNORE_DOLLAR
+                else:
+                    substituted += symbol
+            elif mode == SubstitutionMode.IGNORE_DOLLAR:
+                if symbol == "$":
+                    substituted += "$"
+                elif symbol == "\\":
+                    substituted += "\\"
+                else:
+                    substituted += f"\\{symbol}"
+                mode = SubstitutionMode.NORMAL
+            elif mode == SubstitutionMode.POST_DOLLAR:
+                if self.__is_token_symbol(symbol, 0):
+                    mode = SubstitutionMode.READ_TOKEN_NORMAL
+                    token += symbol
+                elif symbol == '{':
+                    mode = SubstitutionMode.READ_TOKEN_IN_BRACES
+                else:
+                    substituted += f"${symbol}"
+                    mode = SubstitutionMode.NORMAL
+            elif mode == SubstitutionMode.READ_TOKEN_IN_BRACES:
+                if self.__is_token_symbol(symbol, len(token)):
+                    token += symbol
+                elif symbol == "}":
+                    substituted += self.__session.get(token)
+                    token = ""
+                    mode = SubstitutionMode.NORMAL
+                else:
+                    raise ParserError("unclosed brace")
+            else:
+                if self.__is_token_symbol(symbol, len(token)):
+                    token += symbol
+                else:
+                    substituted += self.__session.get(token)
+                    token = ""
+                    mode = SubstitutionMode.NORMAL
+                if i + 1 == len(sentence):
+                    substituted += self.__session.get(token)
+                    token = ""
+                    mode = SubstitutionMode.NORMAL
+        return substituted
 
     def __parse_whitespaces(self, sentence: str) -> list[str]:
         result = []
