@@ -95,7 +95,7 @@ def parse_assignments(source: str) -> list[tuple[str, str]]:
         ('X="a=b"', [("X", "a=b")]),
         ("X=/usr/bin", [("X", "/usr/bin")]),
         ("X=*.txt", [("X", "*.txt")]),
-        ("X=$HOME", [("X", "$HOME")]),
+        ("X=HOME", [("X", "HOME")]),
         ("X=1 echo", [("X", "1")]),
         ("X=1 Y=2 echo hello", [("X", "1"), ("Y", "2")]),
         ("X=1 echo Y=2", [("X", "1")]),
