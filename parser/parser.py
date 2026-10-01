@@ -32,6 +32,7 @@ class SubstitutionMode(Enum):
     POST_DOLLAR = auto()
     READ_TOKEN_NORMAL = auto()
     READ_TOKEN_IN_BRACES = auto()
+    SINGLE_QUOTED = auto()
 
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
@@ -79,14 +80,24 @@ class Parser:
         mode = SubstitutionMode.NORMAL
         substituted = ""
         token = ""
+        in_double_quotes = False
         for i, symbol in enumerate(sentence):
             if mode == SubstitutionMode.NORMAL:
                 if symbol == "$" and i + 1 != len(sentence):
                     mode = SubstitutionMode.POST_DOLLAR
                 elif symbol == "\\" and i + 1 != len(sentence):
                     mode = SubstitutionMode.IGNORE_DOLLAR
+                elif symbol == "'" and i + 1 != len(sentence) and not in_double_quotes:
+                    substituted += symbol
+                    mode = SubstitutionMode.SINGLE_QUOTED
                 else:
                     substituted += symbol
+                    if symbol == '"':
+                        in_double_quotes = not in_double_quotes
+            elif mode == SubstitutionMode.SINGLE_QUOTED:
+                substituted += symbol
+                if symbol == "'":
+                    mode = SubstitutionMode.NORMAL
             elif mode == SubstitutionMode.IGNORE_DOLLAR:
                 if symbol == "$":
                     substituted += "$"
@@ -94,7 +105,12 @@ class Parser:
                     substituted += "\\"
                 else:
                     substituted += f"\\{symbol}"
-                mode = SubstitutionMode.NORMAL
+                if symbol == "'" and not in_double_quotes:
+                    mode = SubstitutionMode.SINGLE_QUOTED
+                else:
+                    if symbol == '"':
+                        in_double_quotes = not in_double_quotes
+                    mode = SubstitutionMode.NORMAL
             elif mode == SubstitutionMode.POST_DOLLAR:
                 if self.__is_token_symbol(symbol, 0):
                     mode = SubstitutionMode.READ_TOKEN_NORMAL
@@ -103,7 +119,12 @@ class Parser:
                     mode = SubstitutionMode.READ_TOKEN_IN_BRACES
                 else:
                     substituted += f"${symbol}"
-                    mode = SubstitutionMode.NORMAL
+                    if symbol == "'" and not in_double_quotes:
+                        mode = SubstitutionMode.SINGLE_QUOTED
+                    else:
+                        if symbol == '"':
+                            in_double_quotes = not in_double_quotes
+                        mode = SubstitutionMode.NORMAL
             elif mode == SubstitutionMode.READ_TOKEN_IN_BRACES:
                 if self.__is_token_symbol(symbol, len(token)):
                     token += symbol
@@ -119,7 +140,12 @@ class Parser:
                 else:
                     substituted += self.__session.get(token)
                     token = ""
-                    mode = SubstitutionMode.NORMAL
+                    if symbol == "'" and not in_double_quotes:
+                        mode = SubstitutionMode.SINGLE_QUOTED
+                    else:
+                        if symbol == '"':
+                            in_double_quotes = not in_double_quotes
+                        mode = SubstitutionMode.NORMAL
                 if i + 1 == len(sentence):
                     substituted += self.__session.get(token)
                     token = ""
