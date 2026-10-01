@@ -247,6 +247,7 @@ def test_substitution_success(source, variables, expected):
         ("echo ${VA!R}", {"VAR": "hello"}),
         ("${VAR", {"VAR": "hello"}),
         ("${VAR", {}),
+        ("${}", {}),
     ],
 )
 def test_substitution_errors(source, variables):
