@@ -130,7 +130,7 @@ class Parser:
                     token += symbol
                 elif symbol == "}":
                     if len(token) == 0:
-                        raise ParserError("wrong substitution") # TODO
+                        raise ParserError("wrong substitution")
                     substituted += self.__session.get(token)
                     token = ""
                     mode = SubstitutionMode.NORMAL
