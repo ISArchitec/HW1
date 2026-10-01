@@ -129,6 +129,8 @@ class Parser:
                 if self.__is_token_symbol(symbol, len(token)):
                     token += symbol
                 elif symbol == "}":
+                    if len(token) == 0:
+                        raise ParserError("wrong substitution") # TODO
                     substituted += self.__session.get(token)
                     token = ""
                     mode = SubstitutionMode.NORMAL
@@ -137,8 +139,13 @@ class Parser:
             else:
                 if self.__is_token_symbol(symbol, len(token)):
                     token += symbol
+                    if i + 1 == len(sentence):
+                        substituted += self.__session.get(token)
+                        token = ""
+                        mode = SubstitutionMode.NORMAL
                 else:
                     substituted += self.__session.get(token)
+                    substituted += symbol
                     token = ""
                     if symbol == "'" and not in_double_quotes:
                         mode = SubstitutionMode.SINGLE_QUOTED
@@ -146,10 +153,8 @@ class Parser:
                         if symbol == '"':
                             in_double_quotes = not in_double_quotes
                         mode = SubstitutionMode.NORMAL
-                if i + 1 == len(sentence):
-                    substituted += self.__session.get(token)
-                    token = ""
-                    mode = SubstitutionMode.NORMAL
+        if mode == SubstitutionMode.READ_TOKEN_IN_BRACES:
+            raise ParserError("unclosed brace")
         return substituted
 
     def __parse_whitespaces(self, sentence: str) -> list[str]:

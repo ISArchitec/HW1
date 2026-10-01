@@ -210,3 +210,47 @@ def test_parser_parses_multiple_sentences_with_pipes(
 def test_parser_raises_on_empty_sentence_after_pipe(source: str) -> None:
     with pytest.raises(ParserError):
         Parser(session=EMPTY_SESSION).parse(source)
+
+def make_session(**kwargs):
+    session = Session()
+    for key, value in kwargs.items():
+        session.set(key, value)
+    return session
+
+
+@pytest.mark.parametrize(
+    "source, variables, expected",
+    [
+        ("echo $VAR", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo $MISSING", {}, ["echo"]),
+        ("echo \\$VAR", {"VAR": "hello"}, ["echo", "$VAR"]),
+        ("echo '$VAR'", {"VAR": "hello"}, ["echo", "$VAR"]),
+        ("echo \\\\$VAR", {"VAR": "hello"}, ["echo", "\\hello"]),
+        ('echo "$VAR"', {"VAR": "hello"}, ["echo", "hello"]),
+        ('echo "\'$VAR\'"', {"VAR": "hello"}, ["echo", "'hello'"]),
+        ("echo $", {}, ["echo", "$"]),
+        ("echo \\x", {}, ["echo", "\\x"]),
+    ],
+)
+def test_substitution_success(source, variables, expected):
+    session = make_session(**variables)
+    parser = Parser(session=session)
+    sequence = parser.parse(source)
+    assert len(sequence) == 1
+    words = [w.word for w in sequence[0].words]
+    assert words == expected
+
+
+@pytest.mark.parametrize(
+    "source, variables",
+    [
+        ("echo ${VA!R}", {"VAR": "hello"}),
+        ("${VAR", {"VAR": "hello"}),
+        ("${VAR", {}),
+    ],
+)
+def test_substitution_errors(source, variables):
+    session = make_session(**variables)
+    parser = Parser(session=session)
+    with pytest.raises(ParserError):
+        parser.parse(source)
