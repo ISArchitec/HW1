@@ -148,3 +148,65 @@ def test_parser_assignments_and_words(
     assignments, words = parse(source)
     assert assignments == expected_assignments
     assert words == expected_words
+
+def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]]:
+    sequence = Parser(session=EMPTY_SESSION).parse(source)
+    result = []
+    for sentence in sequence:
+        assignments = [(a.key, a.value.word) for a in sentence.assignments]
+        words = [w.word for w in sentence.words]
+        result.append((assignments, words))
+    return result
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("echo a | echo b", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("echo a|echo b", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("  echo   a   |   echo   b  ", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("A=1 | B=2", [([("A", "1")], []), ([("B", "2")], [])]),
+        ("A=1 echo | B=2 cat", [([("A", "1")], ["echo"]), ([("B", "2")], ["cat"])]),
+        (
+            "A=1 echo x | B=2 echo y",
+            [([("A", "1")], ["echo", "x"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        ("echo 'a|b'", [([], ["echo", "a|b"])]),
+        ('echo "a|b"', [([], ["echo", "a|b"])]),
+        ("echo 'a | b'", [([], ["echo", "a | b"])]),
+        ('echo "a | b"', [([], ["echo", "a | b"])]),
+        ("echo 'a|b' c|d", [([], ["echo", "a|b", "c"]), ([], ["d"])]),
+        ('echo "a|b" c|d', [([], ["echo", "a|b", "c"]), ([], ["d"])]),
+        (
+            "echo 'a|b' | echo \"c|d\"",
+            [([], ["echo", "a|b"]), ([], ["echo", "c|d"])],
+        ),
+        ("A='a|b' | B=\"c|d\"", [([("A", "a|b")], []), ([("B", "c|d")], [])]),
+    ],
+)
+def test_parser_parses_multiple_sentences_with_pipes(
+    source: str,
+    expected: list[tuple[list[tuple[str, str]], list[str]]],
+) -> None:
+    assert parse_sentences(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo |",
+        "echo ||",
+        "| echo",
+        "|",
+        "||",
+        "echo | | echo",
+        "echo || echo",
+        "   | echo",
+        "echo |   ",
+        "A=1 |",
+        "| A=1",
+        "A=1 | | B=2",
+    ],
+)
+def test_parser_raises_on_empty_sentence_after_pipe(source: str) -> None:
+    with pytest.raises(ParserError):
+        Parser(session=EMPTY_SESSION).parse(source)
