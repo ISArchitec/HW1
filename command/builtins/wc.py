@@ -72,7 +72,7 @@ class WordCounter:
 class WcCommand(Command):
     """Count selected text metrics for files or the input stream."""
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Write counts for each input and totals when multiple inputs are given."""
         options, operands = parse_options(self.args, WcOption)
         options = options or DEFAULT_OPTIONS
@@ -80,15 +80,15 @@ class WcCommand(Command):
         paths = self._input_paths(operands)
         totals = dict.fromkeys(WcOption, 0)
         for path in paths:
-            counts = self._count_input(path, WcOption.MAX_LINE_LENGTH in options)
+            counts = await self._count_input(path, WcOption.MAX_LINE_LENGTH in options)
             self._accumulate(totals, counts)
-            self._write_counts([counts[option] for option in order], path)
+            await self._write_counts([counts[option] for option in order], path)
         if len(paths) > 1:
-            self._write_counts([totals[option] for option in order], "total")
+            await self._write_counts([totals[option] for option in order], "total")
 
-    def _count_input(self, path: str | None, measure_width: bool) -> dict[WcOption, int]:
+    async def _count_input(self, path: str | None, measure_width: bool) -> dict[WcOption, int]:
         counter = WordCounter(measure_width)
-        for chunk in self._read_chunks(path):
+        async for chunk in self._read_chunks(path):
             counter.consume(chunk)
         counter.finish_line()
         return counter.counts
@@ -101,6 +101,6 @@ class WcCommand(Command):
             else:
                 totals[option] += count
 
-    def _write_counts(self, counts: list[int], label: str | None) -> None:
+    async def _write_counts(self, counts: list[int], label: str | None) -> None:
         suffix = f" {label}" if label is not None else ""
-        self._write(" ".join(map(str, counts)) + suffix + "\n")
+        await self._write(" ".join(map(str, counts)) + suffix + "\n")

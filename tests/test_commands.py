@@ -9,14 +9,14 @@ from command.builtins import EchoCommand
 from command.command_factory import CommandFactory
 from command.exec_command import ExecCommand
 from tests.helpers import MemoryStream
-from utils.exception import ExecutionError
+from utils.exception import ExecutionError, ExitInterrupt
 from utils.session import Session
 
 
-class CommandTests(unittest.TestCase):
+class CommandTests(unittest.IsolatedAsyncioTestCase):
     session = Session()
 
-    def test_output_errors_become_execution_errors(self):
+    async def test_output_errors_become_execution_errors(self):
         error = OSError("write failed")
         for words in [["cat"], ["cat", "-n"], ["echo", "hello"], ["wc"], ["pwd"]]:
             with self.subTest(words=words):
@@ -26,30 +26,29 @@ class CommandTests(unittest.TestCase):
                     patch.object(output, "write", side_effect=error),
                     self.assertRaises(ExecutionError) as raised,
                 ):
-                    command.execute()
+                    await command.execute()
                 self.assertEqual(raised.exception.code, 1)
 
-    def execute_command(self, words, text=""):
+    async def execute_command(self, words, text=""):
         source, output = MemoryStream(text), MemoryStream()
-        CommandFactory().create(words, source, output, self.session).execute()
+        await CommandFactory().create(words, source, output, self.session).execute()
         return output.buffer.getvalue()
 
-    def test_pwd(self):
-        self.assertEqual(self.execute_command(["pwd"]), os.getcwd() + "\n")
+    async def test_pwd(self):
+        self.assertEqual(await self.execute_command(["pwd"]), os.getcwd() + "\n")
         with self.assertRaises(ExecutionError) as raised:
-            self.execute_command(["pwd", "unexpected"])
+            await self.execute_command(["pwd", "unexpected"])
         self.assertEqual(raised.exception.code, 1)
         with (
             patch("command.builtins.pwd.os.getcwd", side_effect=OSError),
             self.assertRaises(ExecutionError),
         ):
-            self.execute_command(["pwd"])
+            await self.execute_command(["pwd"])
 
-    def test_exit(self):
+    async def test_exit(self):
         command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream(), self.session)
-        with self.assertRaises(SystemExit) as raised:
-            command.execute()
-        self.assertEqual(raised.exception.code, 0)
+        with self.assertRaises(ExitInterrupt):
+            await command.execute()
 
     def test_factory_selects_external_command(self):
         command = CommandFactory().create(
@@ -57,78 +56,78 @@ class CommandTests(unittest.TestCase):
         )
         self.assertIsInstance(command, ExecCommand)
 
-    def test_external_arguments(self):
+    async def test_external_arguments(self):
         script = (
             "import sys; from pathlib import Path; "
             "Path(sys.argv[1]).write_text(sys.argv[2], encoding='utf-8')"
         )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "output.txt"
-            self.execute_command([sys.executable, "-c", script, str(path), "a b; $name"])
+            await self.execute_command([sys.executable, "-c", script, str(path), "a b; $name"])
             self.assertEqual(path.read_text(encoding="utf-8"), "a b; $name")
 
-    def test_external_nonzero_exit(self):
+    async def test_external_nonzero_exit(self):
         with self.assertRaises(ExecutionError) as raised:
-            self.execute_command([sys.executable, "-c", "raise SystemExit(3)"])
+            await self.execute_command([sys.executable, "-c", "raise SystemExit(3)"])
         self.assertEqual(raised.exception.code, 3)
 
-    def test_external_missing_program(self):
+    async def test_external_missing_program(self):
         with (
             tempfile.TemporaryDirectory() as directory,
             self.assertRaises(ExecutionError) as raised,
         ):
-            self.execute_command([str(Path(directory) / "missing-program")])
+            await self.execute_command([str(Path(directory) / "missing-program")])
         self.assertEqual(raised.exception.code, 127)
 
-    def test_external_launch_permission_error(self):
+    async def test_external_launch_permission_error(self):
         with (
             patch("command.exec_command.subprocess.run", side_effect=PermissionError),
             self.assertRaises(ExecutionError) as raised,
         ):
-            self.execute_command(["external-program"])
+            await self.execute_command(["external-program"])
         self.assertEqual(raised.exception.code, 126)
 
-    def test_echo(self):
-        self.assertEqual(self.execute_command(["echo"]), "\n")
+    async def test_echo(self):
+        self.assertEqual(await self.execute_command(["echo"]), "\n")
         self.assertEqual(
-            self.execute_command(["echo", "hello world", "", "$name"]),
+            await self.execute_command(["echo", "hello world", "", "$name"]),
             "hello world  $name\n",
         )
 
-    def test_factory_creates_without_executing_and_copies_arguments(self):
+    async def test_factory_creates_without_executing_and_copies_arguments(self):
         output = MemoryStream()
         words = ["echo", "original"]
         command = CommandFactory().create(words, MemoryStream(), output, self.session)
         self.assertIsInstance(command, EchoCommand)
         self.assertEqual(output.buffer.getvalue(), "")
         words[1] = "changed"
-        command.execute()
+        await command.execute()
         self.assertEqual(output.buffer.getvalue(), "original\n")
 
-    def test_factory_errors(self):
+    async def test_factory_errors(self):
         with self.assertRaises(ValueError):
-            self.execute_command([])
+            await self.execute_command([])
 
-    def test_cat_stdin_preserves_text(self):
+    async def test_cat_stdin_preserves_text(self):
         for text in ["", "\n", "one\r\n\ntwo", "no final newline"]:
             with self.subTest(text=text):
-                self.assertEqual(self.execute_command(["cat"], text), text)
+                self.assertEqual(await self.execute_command(["cat"], text), text)
 
-    def test_multiple_files(self):
+    async def test_multiple_files(self):
         with tempfile.TemporaryDirectory() as directory:
             first, second = Path(directory) / "a.txt", Path(directory) / "b.txt"
             first.write_bytes(b"hi\r\n")
             second.write_bytes(b"end")
             self.assertEqual(
-                self.execute_command(["cat", str(first), str(second)], "unused input"),
+                await self.execute_command(["cat", str(first), str(second)], "unused input"),
                 "hi\r\nend",
             )
             self.assertEqual(
-                self.execute_command(["wc", str(first), str(second)]),
+                await self.execute_command(["wc", str(first), str(second)]),
                 f"1 1 4 {first}\n0 1 3 {second}\n1 2 7 total\n",
             )
 
-    def test_wc_stdin(self):
+    async def test_wc_stdin(self):
         for text, expected in [
             ("", "0 0 0\n"),
             ("\n", "1 0 1\n"),
@@ -136,24 +135,24 @@ class CommandTests(unittest.TestCase):
             ("word", "0 1 4\n"),
         ]:
             with self.subTest(text=text):
-                self.assertEqual(self.execute_command(["wc"], text), expected)
+                self.assertEqual(await self.execute_command(["wc"], text), expected)
 
-    def test_wc_word_crossing_chunk_boundary(self):
+    async def test_wc_word_crossing_chunk_boundary(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "long.txt"
             path.write_bytes(b"a" * 9000 + b" b\n")
-            self.assertEqual(self.execute_command(["wc", str(path)]), f"1 2 9003 {path}\n")
+            self.assertEqual(await self.execute_command(["wc", str(path)]), f"1 2 9003 {path}\n")
 
-    def test_missing_file(self):
+    async def test_missing_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "missing.txt"
             for name in ["cat", "wc"]:
                 with self.subTest(name=name):
                     with self.assertRaises(ExecutionError) as raised:
-                        self.execute_command([name, str(path)])
+                        await self.execute_command([name, str(path)])
                     self.assertEqual(raised.exception.code, 1)
 
-    def test_echo_option_order_and_text(self):
+    async def test_echo_option_order_and_text(self):
         cases = [
             (["-n", "hello"], "hello"),
             (["-n"], ""),
@@ -167,9 +166,9 @@ class CommandTests(unittest.TestCase):
         ]
         for args, expected in cases:
             with self.subTest(args=args):
-                self.assertEqual(self.execute_command(["echo", *args]), expected)
+                self.assertEqual(await self.execute_command(["echo", *args]), expected)
 
-    def test_echo_escapes(self):
+    async def test_echo_escapes(self):
         cases = [
             (r"a\cb", "a"),
             (r"\a\b\e\f\n\r\t\v\\", "\a\b\x1b\f\n\r\t\v\\\n"),
@@ -185,48 +184,51 @@ class CommandTests(unittest.TestCase):
         ]
         for text, expected in cases:
             with self.subTest(text=text):
-                self.assertEqual(self.execute_command(["echo", "-e", text]), expected)
+                self.assertEqual(await self.execute_command(["echo", "-e", text]), expected)
 
-    def test_cat_numbering_and_squeeze(self):
+    async def test_cat_numbering_and_squeeze(self):
         text = "a\n\n\nb\n"
         self.assertEqual(
-            self.execute_command(["cat", "-n"], text), "     1\ta\n     2\t\n     3\t\n     4\tb\n"
+            await self.execute_command(["cat", "-n"], text),
+            "     1\ta\n     2\t\n     3\t\n     4\tb\n",
         )
-        self.assertEqual(self.execute_command(["cat", "-bn"], text), "     1\ta\n\n\n     2\tb\n")
         self.assertEqual(
-            self.execute_command(["cat", "-sn"], text), "     1\ta\n     2\t\n     3\tb\n"
+            await self.execute_command(["cat", "-bn"], text), "     1\ta\n\n\n     2\tb\n"
+        )
+        self.assertEqual(
+            await self.execute_command(["cat", "-sn"], text), "     1\ta\n     2\t\n     3\tb\n"
         )
 
-    def test_cat_visible_characters(self):
-        self.assertEqual(self.execute_command(["cat", "-ET"], "a\t\nlast"), "a^I$\nlast")
-        self.assertEqual(self.execute_command(["cat", "-v"], "\0\x1b\x7f\t\n"), "^@^[^?\t\n")
-        self.assertEqual(self.execute_command(["cat", "-A"], "\0\t\r\n"), "^@^I^M$\n")
+    async def test_cat_visible_characters(self):
+        self.assertEqual(await self.execute_command(["cat", "-ET"], "a\t\nlast"), "a^I$\nlast")
+        self.assertEqual(await self.execute_command(["cat", "-v"], "\0\x1b\x7f\t\n"), "^@^[^?\t\n")
+        self.assertEqual(await self.execute_command(["cat", "-A"], "\0\t\r\n"), "^@^I^M$\n")
 
-    def test_cat_visible_utf8_bytes(self):
+    async def test_cat_visible_utf8_bytes(self):
         # U+00E9 is C3 A9; U+0080 is C2 80; U+07FF is DF BF in UTF-8.
         self.assertEqual(
-            self.execute_command(["cat", "-v"], "\u00e9\u0080\u07ff\x1f \x7f"),
+            await self.execute_command(["cat", "-v"], "\u00e9\u0080\u07ff\x1f \x7f"),
             "M-CM-)M-BM-^@M-_M-?^_ ^?",
         )
 
-    def test_unicode_counts_and_formatting_across_chunk_boundaries(self):
+    async def test_unicode_counts_and_formatting_across_chunk_boundaries(self):
         text = "a\u00e9\u4e2d\U0001f600e\u0301\tz\n"
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "unicode.txt"
             path.write_bytes(text.encode("utf-8"))
             for size in [1, 2, 5, 8192]:
                 with self.subTest(chunk_size=size), patch("command.command.CHUNK_SIZE", size):
-                    self.assertEqual(self.execute_command(["cat", str(path)]), text)
+                    self.assertEqual(await self.execute_command(["cat", str(path)]), text)
                     self.assertEqual(
-                        self.execute_command(["cat", "-nET", str(path)]),
+                        await self.execute_command(["cat", "-nET", str(path)]),
                         "     1\ta\u00e9\u4e2d\U0001f600e\u0301^Iz$\n",
                     )
                     self.assertEqual(
-                        self.execute_command(["wc", "-Lcmwl", str(path)]),
+                        await self.execute_command(["wc", "-Lcmwl", str(path)]),
                         f"1 2 9 16 9 {path}\n",
                     )
 
-    def test_command_state_resets_on_each_execution(self):
+    async def test_command_state_resets_on_each_execution(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "input.txt"
             path.write_bytes(b"first\n\nlast")
@@ -239,50 +241,54 @@ class CommandTests(unittest.TestCase):
                     command = CommandFactory().create(
                         [*words, str(path)], MemoryStream(), output, self.session
                     )
-                    command.execute()
-                    command.execute()
+                    await command.execute()
+                    await command.execute()
                     self.assertEqual(output.buffer.getvalue(), expected * 2)
 
-    def test_echo_invalid_option_group_is_entirely_text(self):
+    async def test_echo_invalid_option_group_is_entirely_text(self):
         self.assertEqual(
-            self.execute_command(["echo", "-e", "-Enz", r"a\tb"]),
+            await self.execute_command(["echo", "-e", "-Enz", r"a\tb"]),
             "-Enz a\tb\n",
         )
 
-    def test_cat_state_across_files_and_chunks(self):
+    async def test_cat_state_across_files_and_chunks(self):
         with tempfile.TemporaryDirectory() as directory:
             first, second = Path(directory) / "a", Path(directory) / "b"
             first.write_bytes(b"a" * 8193)
             second.write_bytes(b"b\n\n\nc")
             self.assertEqual(
-                self.execute_command(["cat", "-ns", str(first), str(second)]),
+                await self.execute_command(["cat", "-ns", str(first), str(second)]),
                 "     1\t" + "a" * 8193 + "b\n     2\t\n     3\tc",
             )
             first.write_bytes(b"a\n\n")
             second.write_bytes(b"\n\nb")
-            self.assertEqual(self.execute_command(["cat", "-s", str(first), str(second)]), "a\n\nb")
+            self.assertEqual(
+                await self.execute_command(["cat", "-s", str(first), str(second)]), "a\n\nb"
+            )
 
-    def test_cat_b_numbers_only_nonblank(self):
+    async def test_cat_b_numbers_only_nonblank(self):
         self.assertEqual(
-            self.execute_command(["cat", "-b"], "a\n\nb\n"), "     1\ta\n\n     2\tb\n"
+            await self.execute_command(["cat", "-b"], "a\n\nb\n"), "     1\ta\n\n     2\tb\n"
         )
 
-    def test_cat_n_with_line_ends(self):
-        self.assertEqual(self.execute_command(["cat", "-nE"], "a\n\n"), "     1\ta$\n     2\t$\n")
+    async def test_cat_n_with_line_ends(self):
+        self.assertEqual(
+            await self.execute_command(["cat", "-nE"], "a\n\n"), "     1\ta$\n     2\t$\n"
+        )
 
-    def test_cat_v_high_bytes(self):
-        self.assertEqual(self.execute_command(["cat", "-v"], "é"), "M-CM-)")
+    async def test_cat_v_high_bytes(self):
+        self.assertEqual(await self.execute_command(["cat", "-v"], "é"), "M-CM-)")
 
-    def test_invalid_utf8_file(self):
+    async def test_invalid_utf8_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bad.bin"
             path.write_bytes(b"\xff\xfe\xfa")
             for name in ["cat", "wc"]:
                 with self.subTest(name=name), self.assertRaises(ExecutionError) as raised:
-                    self.execute_command([name, str(path)])
+                    await self.execute_command([name, str(path)])
                 self.assertEqual(raised.exception.code, 1)
 
-    def test_wc_selected_counts_and_order(self):
+    async def test_wc_selected_counts_and_order(self):
         text = "a b\n"
         for args, expected in [
             (["-l"], "1\n"),
@@ -294,38 +300,38 @@ class CommandTests(unittest.TestCase):
             (["-L"], "3\n"),
         ]:
             with self.subTest(args=args):
-                self.assertEqual(self.execute_command(["wc", *args], text), expected)
+                self.assertEqual(await self.execute_command(["wc", *args], text), expected)
 
-    def test_wc_display_width(self):
-        self.assertEqual(self.execute_command(["wc", "-L"], "a\tb\nhello"), "9\n")
-        self.assertEqual(self.execute_command(["wc", "-L"], ""), "0\n")
-        self.assertEqual(self.execute_command(["wc", "-L"], "abc\rx"), "3\n")
+    async def test_wc_display_width(self):
+        self.assertEqual(await self.execute_command(["wc", "-L"], "a\tb\nhello"), "9\n")
+        self.assertEqual(await self.execute_command(["wc", "-L"], ""), "0\n")
+        self.assertEqual(await self.execute_command(["wc", "-L"], "abc\rx"), "3\n")
 
-    def test_wc_totals_use_maximum_width(self):
+    async def test_wc_totals_use_maximum_width(self):
         with tempfile.TemporaryDirectory() as directory:
             first, second = Path(directory) / "a", Path(directory) / "b"
             first.write_bytes(b"abcd\n")
             second.write_bytes(b"xy\n")
             self.assertEqual(
-                self.execute_command(["wc", "-lL", str(first), str(second)]),
+                await self.execute_command(["wc", "-lL", str(first), str(second)]),
                 f"1 4 {first}\n1 2 {second}\n2 4 total\n",
             )
 
-    def test_double_dash_preserves_filename(self):
+    async def test_double_dash_preserves_filename(self):
         with tempfile.TemporaryDirectory() as directory:
             Path(directory, "-n").write_bytes(b"abc\n")
             previous_directory = os.getcwd()
             try:
                 os.chdir(directory)
-                self.assertEqual(self.execute_command(["cat", "--", "-n"]), "abc\n")
-                self.assertEqual(self.execute_command(["wc", "--", "-n"]), "1 1 4 -n\n")
+                self.assertEqual(await self.execute_command(["cat", "--", "-n"]), "abc\n")
+                self.assertEqual(await self.execute_command(["wc", "--", "-n"]), "1 1 4 -n\n")
             finally:
                 os.chdir(previous_directory)
 
-    def test_invalid_options(self):
+    async def test_invalid_options(self):
         for name in ["cat", "wc"]:
             with self.subTest(name=name), self.assertRaises(ExecutionError) as raised:
-                self.execute_command([name, "-z"])
+                await self.execute_command([name, "-z"])
             self.assertEqual(raised.exception.code, 1)
 
 

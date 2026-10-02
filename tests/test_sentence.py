@@ -14,10 +14,10 @@ def test_sentence_copies_words():
     assert not Sentence([], []).has_words()
 
 
-def test_sentence_executes_command():
+async def test_sentence_executes_command():
     session = Session()
     out = MemoryStream()
-    Sentence([], [Word("echo"), Word("hi")]).execute(session, MemoryStream(), out)
+    await Sentence([], [Word("echo"), Word("hi")]).execute(session, MemoryStream(), out)
     assert out.buffer.getvalue() == "hi\n"
 
 
@@ -32,36 +32,36 @@ def test_sequence_container_protocol():
     assert list(sequence) == [first, second]
 
 
-def test_empty_sequence_executes_nothing():
+async def test_empty_sequence_executes_nothing():
     session = Session()
-    SentenceSequence(session).execute()
+    await SentenceSequence(session).execute()
 
 
-def test_sequence_executes_sentences(capsys):
+async def test_sequence_executes_sentences(capsys):
     session = Session()
     sequence = SentenceSequence(session)
     sequence.add_sentence(Sentence([], [Word("echo"), Word("hi")]))
-    sequence.execute()
+    await sequence.execute()
     assert capsys.readouterr().out == "hi\n"
 
 
-def test_global_assignment_changes_session():
+async def test_global_assignment_changes_session():
     stream = MemoryStream()
     session = Session()
     sentence = Sentence([Assignment("X", Word("Y"))], [])
     assert session.get("X") == ""
-    sentence.execute(session, stream, stream)
+    await sentence.execute(session, stream, stream)
     assert session.get("X") == "Y"
     assert os.environ.get("X") == "Y"
 
 
-def test_local_assignment_not_changes_session():
+async def test_local_assignment_not_changes_session():
     os.environ["X"] = ""
     stream = MemoryStream()
     session = Session()
     sentence = Sentence([Assignment("X", Word("Y"))], [Word("echo"), Word("hi")])
     assert session.get("X") == ""
-    sentence.execute(session, stream, stream)
+    await sentence.execute(session, stream, stream)
     assert session.get("X") == ""
     assert os.environ.get("X") == ""
     assert stream.buffer.getvalue() == "hi\n"

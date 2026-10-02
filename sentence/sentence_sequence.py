@@ -1,6 +1,10 @@
+import asyncio
+
 from sentence.sentence import Sentence
-from stream import Console
+from stream import Console, Pipe
 from utils.session import Session
+
+MAX_PIPE_BUFFER = 100
 
 
 class SentenceSequence:
@@ -25,8 +29,16 @@ class SentenceSequence:
     def __getitem__(self, key: int):
         return self.__sentence[key]
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Executing all commands, that sequence represents"""
         console = Console()
-        for sentence in self.__sentence:
-            sentence.execute(self.session, console, console)
+        streams = [Pipe(MAX_PIPE_BUFFER) for i in range(len(self.__sentence) - 1)]
+        streams = [console, *streams, console]
+        tasks = []
+        for sentence_id in range(len(self.__sentence)):
+            sentence = self.__sentence[sentence_id]
+            exec_work = sentence.execute(
+                self.session, streams[sentence_id], streams[sentence_id + 1]
+            )
+            tasks.append(asyncio.create_task(exec_work))
+        await asyncio.gather(*tasks)

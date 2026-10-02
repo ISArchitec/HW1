@@ -3,26 +3,26 @@ from unittest.mock import patch
 from stream import Console
 
 
-def test_read_line_reads_from_input():
+async def test_read_line_reads_from_input():
     console = Console()
-    with patch("builtins.input", return_value="echo hi"):
-        assert console.read_line() == "echo hi"
+    with patch("aioconsole.ainput", return_value="echo hi"):
+        assert await console.read_line() == "echo hi"
 
 
-def test_read_char_returns_first_char():
+async def test_read_char_returns_first_char():
     console = Console()
-    with patch("builtins.input", return_value="abc") as fake_input:
-        assert console.read_char() == "a"
+    with patch("aioconsole.ainput", return_value="abc") as fake_input:
+        assert await console.read_char() == "a"
         assert fake_input.call_count == 1
 
 
-def test_read_line_after_read_char_returns_rest():
+async def test_read_line_after_read_char_returns_rest():
     console = Console()
-    with patch("builtins.input", return_value="abc"):
-        console.read_char()
-        assert console.read_line() == "bc"
+    with patch("aioconsole.ainput", return_value="abc"):
+        await console.read_char()
+        assert await console.read_line() == "bc"
 
 
-def test_write_outputs_text_verbatim(capsys):
-    Console().write("hi\n")
+async def test_write_outputs_text_verbatim(capsys):
+    await Console().write("hi\n")
     assert capsys.readouterr().out == "hi\n"
