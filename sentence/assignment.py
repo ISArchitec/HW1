@@ -1,6 +1,7 @@
+import os
+
 from sentence.word import Word
 from utils.session import Session
-import os
 
 
 class Assignment:

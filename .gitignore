@@ -23,9 +23,16 @@ __pycache__
 # should NOT be excluded as they contain compiler settings and other important
 # information for Eclipse / Flash Builder.
 
+# PyCharm project files
+.idea
+
 # Test coverage
 .coverage
 htmlcov/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
 
 # macOS
 .DS_Store

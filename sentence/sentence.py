@@ -1,8 +1,8 @@
-from sentence.word import Word
-from sentence.assignment import Assignment
-from utils.session import Session
-from stream import InStream, OutStream
 from command import CommandFactory
+from sentence.assignment import Assignment
+from sentence.word import Word
+from stream import InStream, OutStream
+from utils.session import Session
 
 
 class Sentence:
@@ -26,7 +26,7 @@ class Sentence:
         """Check if there is no command in the sentence"""
         return len(self.__words) > 0
 
-    def execute(self, session: Session, in_stream: InStream, out_stream: OutStream):
+    async def execute(self, session: Session, in_stream: InStream, out_stream: OutStream):
         """Executing command, that this sentence describe"""
         local_session = session.copy()
         for assignment in self.__assignments:
@@ -37,6 +37,8 @@ class Sentence:
                 assignment.execute(session)
         result_session = local_session if self.has_words() else session
         if self.has_words():
-            CommandFactory().create(
-                list(map(lambda word: word.word, self.__words)), in_stream, out_stream, result_session
-            ).execute()
+            await (
+                CommandFactory()
+                .create([word.word for word in self.__words], in_stream, out_stream, result_session)
+                .execute()
+            )

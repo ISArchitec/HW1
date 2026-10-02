@@ -9,6 +9,7 @@ from parser.utils.utils import is_token_symbol
 
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
+
     __session: Session
 
     def __init__(self, session: Session):
@@ -47,8 +48,8 @@ class Parser:
     def __make_sentence(self, words: list[str]) -> Sentence:
         assignments = []
         command_words = []
-        for (i, word) in enumerate(words):
-            if not isinstance(parsing_result:=self.__parse_element(word), Assignment):
+        for i, word in enumerate(words):
+            if not isinstance(parsing_result := self.__parse_element(word), Assignment):
                 command_words = list(map(self.__parse_word, words[i:]))
                 break
             assignments.append(parsing_result)
@@ -63,5 +64,5 @@ class Parser:
                 if symbol != '=' or i == 0:
                     return Word(word)
                 else:
-                    return Assignment(word[:i], Word(word[i + 1:]))
+                    return Assignment(word[:i], Word(word[i + 1 :]))
         return Word(word)

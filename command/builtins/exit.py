@@ -1,11 +1,10 @@
-import sys
-
 from command.command import Command
+from utils.exception import ExitInterrupt
 
 
 class ExitCommand(Command):
     """Terminate the interpreter with a successful exit status."""
-    
-    def execute(self) -> None:
+
+    async def execute(self) -> None:
         """Raise SystemExit with exit code zero."""
-        sys.exit(0)
+        raise ExitInterrupt

@@ -6,8 +6,8 @@ from utils.exception import ExecutionError
 
 class PwdCommand(Command):
     """Print the current working directory."""
-    
-    def execute(self) -> None:
+
+    async def execute(self) -> None:
         """Write the working directory and reject any supplied arguments."""
         if self.args:
             raise ExecutionError(1)
@@ -15,4 +15,4 @@ class PwdCommand(Command):
             directory = os.getcwd()
         except OSError as error:
             raise ExecutionError(1) from error
-        self._write(directory + "\n")
+        await self._write(directory + "\n")

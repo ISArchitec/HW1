@@ -3,7 +3,6 @@ from enum import Enum
 from command.command import Command
 from command.utils import parse_options
 
-
 HIGH_BIT = 0x80
 ASCII_SPACE = 0x20
 ASCII_DELETE = 0x7F
@@ -12,6 +11,7 @@ CARET_OFFSET = ord("@")
 
 class CatOption(Enum):
     """List the supported short flags for the cat command."""
+
     NUMBER_LINES = "n"
     NUMBER_NONBLANK = "b"
     SQUEEZE_BLANK = "s"
@@ -85,12 +85,12 @@ class CatFormatter:
 class CatCommand(Command):
     """Concatenate files or input stream text with optional display formatting."""
 
-    def execute(self) -> None:
+    async def execute(self) -> None:
         """Parse cat options and write formatted input to the output stream."""
         options, operands = parse_options(self.args, CatOption)
         if CatOption.SHOW_ALL in options:
             options.update({CatOption.SHOW_NONPRINTING, CatOption.SHOW_ENDS, CatOption.SHOW_TABS})
         formatter = CatFormatter(options)
         for path in self._input_paths(operands):
-            for chunk in self._read_chunks(path):
-                self._write(formatter.format_chunk(chunk))
+            async for chunk in self._read_chunks(path):
+                await self._write(formatter.format_chunk(chunk))

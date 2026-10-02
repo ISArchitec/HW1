@@ -1,10 +1,12 @@
+import asyncio
+
 from interpreter import Interpreter
 
 
-def main():
+async def main():
     interpreter = Interpreter()
-    interpreter.run()
+    await interpreter.run()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
