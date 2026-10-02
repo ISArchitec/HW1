@@ -13,19 +13,19 @@ class PipeSplitter:
         self.__state: PipeState = PipeNormalState(self)
 
     def add_symbol(self, symbol: str) -> None:
-        "consumes 1 symbol"
+        "Consumes 1 symbol"
         self.__state.add_symbol(symbol)
 
     def set_state(self, state_class, *args) -> None:
-        "sets splitter state"
+        "Sets splitter state"
         self.__state = state_class(self, *args)
 
     def append(self, symbol: str) -> None:
-        "append symbol to last word"
+        "Appends symbol to the last word"
         self.__sequences[-1] += symbol
 
-    def add_word(self) -> None:
-        "adds new word"
+    def add_sentence(self) -> None:
+        "Adds new sentence"
         self.__sequences.append("")
 
     def __iter__(self) -> Iterator[str]:
