@@ -1,7 +1,8 @@
 from collections.abc import Iterator
 
-from parser.pipes.states.pipe_state import PipeState
 from parser.pipes.states.pipe_normal_state import PipeNormalState
+from parser.pipes.states.pipe_state import PipeState
+
 
 class PipeSplitter:
     """Container, that splits input into sequences by '|' outside quotes.

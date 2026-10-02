@@ -1,11 +1,10 @@
-from sentence import SentenceSequence, Sentence, Word
-from sentence import Assignment
-from utils.session import Session
-
 from parser.pipes.pipe_splitter import PipeSplitter
 from parser.substitution.substitutor import Substitutor
-from parser.word_splitter.word_splitter import WordSplitter
 from parser.utils.utils import is_token_symbol
+from parser.word_splitter.word_splitter import WordSplitter
+from sentence import Assignment, Sentence, SentenceSequence, Word
+from utils.session import Session
+
 
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
@@ -59,9 +58,9 @@ class Parser:
         return Word(word)
 
     def __parse_element(self, word: str) -> Assignment | Word:
-        for (i, symbol) in enumerate(word):
+        for i, symbol in enumerate(word):
             if not is_token_symbol(symbol, i):
-                if symbol != '=' or i == 0:
+                if symbol != "=" or i == 0:
                     return Word(word)
                 else:
                     return Assignment(word[:i], Word(word[i + 1 :]))

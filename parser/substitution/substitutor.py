@@ -1,7 +1,10 @@
-from utils.session import Session
-from parser.substitution.states.substitution_state import SubstitutionState
 from parser.substitution.states.substitution_normal_state import SubstitutionNormalState
-from parser.substitution.states.substitution_single_quoted_state import SubstitutionSingleQuotedState
+from parser.substitution.states.substitution_single_quoted_state import (
+    SubstitutionSingleQuotedState,
+)
+from parser.substitution.states.substitution_state import SubstitutionState
+from utils.session import Session
+
 
 class Substitutor:
     """Container, that substitutes variables from session into sentence.

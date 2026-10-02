@@ -150,6 +150,7 @@ def test_parser_assignments_and_words(
     assert assignments == expected_assignments
     assert words == expected_words
 
+
 def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]]:
     sequence = Parser(session=EMPTY_SESSION).parse(source)
     result = []
@@ -158,6 +159,7 @@ def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]
         words = [w.word for w in sentence.words]
         result.append((assignments, words))
     return result
+
 
 @pytest.mark.parametrize(
     "source, expected",
@@ -212,6 +214,7 @@ def test_parser_raises_on_empty_sentence_after_pipe(source: str) -> None:
     with pytest.raises(ParserError):
         Parser(session=EMPTY_SESSION).parse(source)
 
+
 def make_session(**kwargs):
     session = Session()
     for key, value in kwargs.items():
@@ -228,7 +231,7 @@ def make_session(**kwargs):
         ("echo '$VAR'", {"VAR": "hello"}, ["echo", "$VAR"]),
         ("echo \\\\$VAR", {"VAR": "hello"}, ["echo", "\\hello"]),
         ('echo "$VAR"', {"VAR": "hello"}, ["echo", "hello"]),
-        ('echo "\'$VAR\'"', {"VAR": "hello"}, ["echo", "'hello'"]),
+        ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
         ("echo $", {}, ["echo", "$"]),
         ("echo \\x", {}, ["echo", "\\x"]),
     ],

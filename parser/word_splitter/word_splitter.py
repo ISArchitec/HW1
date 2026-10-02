@@ -1,7 +1,9 @@
-from utils.exception import ParserError
 from collections.abc import Iterator
-from parser.word_splitter.states.word_state import WordState
+
 from parser.word_splitter.states.word_skip_state import WordSkipState
+from parser.word_splitter.states.word_state import WordState
+from utils.exception import ParserError
+
 
 class WordSplitter:
     """Container, that splits sentence into words by whitespaces and quotes.
@@ -36,4 +38,3 @@ class WordSplitter:
         if not self.__finished:
             self.finish()
         return iter(self.__words)
-
