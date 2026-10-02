@@ -1,10 +1,8 @@
 import os
 
-import pytest
-
-from sentence import Sentence, SentenceSequence, Word, Assignment
-from utils.session import Session
+from sentence import Assignment, Sentence, SentenceSequence, Word
 from tests.helpers import MemoryStream
+from utils.session import Session
 
 
 def test_sentence_copies_words():

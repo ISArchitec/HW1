@@ -3,7 +3,6 @@ from enum import Enum
 from command.command import Command
 from command.utils import parse_options
 
-
 HIGH_BIT = 0x80
 ASCII_SPACE = 0x20
 ASCII_DELETE = 0x7F
@@ -12,6 +11,7 @@ CARET_OFFSET = ord("@")
 
 class CatOption(Enum):
     """List the supported short flags for the cat command."""
+
     NUMBER_LINES = "n"
     NUMBER_NONBLANK = "b"
     SQUEEZE_BLANK = "s"

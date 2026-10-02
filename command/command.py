@@ -4,13 +4,12 @@ from collections.abc import Iterator
 from stream import InStream, OutStream
 from utils.exception import ExecutionError
 
-
 CHUNK_SIZE = 8192
 
 
 class Command(ABC):
     """Define the command interface and shared stream and file helpers."""
-    
+
     def __init__(self, args: list[str], in_stream: InStream, out_stream: OutStream):
         """Copy command arguments and store the input and output streams."""
         self.args = args.copy()

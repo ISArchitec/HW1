@@ -1,6 +1,6 @@
 from sentence.sentence import Sentence
-from utils.session import Session
 from stream import Console
+from utils.session import Session
 
 
 class SentenceSequence:

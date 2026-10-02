@@ -3,7 +3,6 @@ from string import hexdigits, octdigits
 
 from command.command import Command
 
-
 ESCAPE_REPLACEMENTS = {
     "a": "\a",
     "b": "\b",
@@ -22,6 +21,7 @@ BYTE_VALUE_COUNT = 256
 
 class EchoOption(Enum):
     """List the supported newline and escape handling flags for echo."""
+
     NO_NEWLINE = "n"
     ENABLE_ESCAPES = "e"
     DISABLE_ESCAPES = "E"

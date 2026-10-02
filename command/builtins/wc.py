@@ -7,6 +7,7 @@ from command.utils import parse_options
 
 class WcOption(Enum):
     """List the text measurements supported by the wc command."""
+
     LINES = "l"
     WORDS = "w"
     CHARACTERS = "m"

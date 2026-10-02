@@ -5,12 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from command.command_factory import CommandFactory
 from command.builtins import EchoCommand
+from command.command_factory import CommandFactory
 from command.exec_command import ExecCommand
+from tests.helpers import MemoryStream
 from utils.exception import ExecutionError
 from utils.session import Session
-from tests.helpers import MemoryStream
 
 
 class CommandTests(unittest.TestCase):
@@ -22,9 +22,11 @@ class CommandTests(unittest.TestCase):
             with self.subTest(words=words):
                 source, output = MemoryStream("hello\n"), MemoryStream()
                 command = CommandFactory().create(words, source, output, self.session)
-                with patch.object(output, "write", side_effect=error):
-                    with self.assertRaises(ExecutionError) as raised:
-                        command.execute()
+                with (
+                    patch.object(output, "write", side_effect=error),
+                    self.assertRaises(ExecutionError) as raised,
+                ):
+                    command.execute()
                 self.assertEqual(raised.exception.code, 1)
 
     def execute_command(self, words, text=""):
@@ -37,9 +39,11 @@ class CommandTests(unittest.TestCase):
         with self.assertRaises(ExecutionError) as raised:
             self.execute_command(["pwd", "unexpected"])
         self.assertEqual(raised.exception.code, 1)
-        with patch("command.builtins.pwd.os.getcwd", side_effect=OSError):
-            with self.assertRaises(ExecutionError):
-                self.execute_command(["pwd"])
+        with (
+            patch("command.builtins.pwd.os.getcwd", side_effect=OSError),
+            self.assertRaises(ExecutionError),
+        ):
+            self.execute_command(["pwd"])
 
     def test_exit(self):
         command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream(), self.session)
@@ -60,9 +64,7 @@ class CommandTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "output.txt"
-            self.execute_command(
-                [sys.executable, "-c", script, str(path), "a b; $name"]
-            )
+            self.execute_command([sys.executable, "-c", script, str(path), "a b; $name"])
             self.assertEqual(path.read_text(encoding="utf-8"), "a b; $name")
 
     def test_external_nonzero_exit(self):
@@ -71,15 +73,19 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 3)
 
     def test_external_missing_program(self):
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(ExecutionError) as raised:
-                self.execute_command([str(Path(directory) / "missing-program")])
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            self.assertRaises(ExecutionError) as raised,
+        ):
+            self.execute_command([str(Path(directory) / "missing-program")])
         self.assertEqual(raised.exception.code, 127)
 
     def test_external_launch_permission_error(self):
-        with patch("command.exec_command.subprocess.run", side_effect=PermissionError):
-            with self.assertRaises(ExecutionError) as raised:
-                self.execute_command(["external-program"])
+        with (
+            patch("command.exec_command.subprocess.run", side_effect=PermissionError),
+            self.assertRaises(ExecutionError) as raised,
+        ):
+            self.execute_command(["external-program"])
         self.assertEqual(raised.exception.code, 126)
 
     def test_echo(self):
@@ -136,9 +142,7 @@ class CommandTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "long.txt"
             path.write_bytes(b"a" * 9000 + b" b\n")
-            self.assertEqual(
-                self.execute_command(["wc", str(path)]), f"1 2 9003 {path}\n"
-            )
+            self.assertEqual(self.execute_command(["wc", str(path)]), f"1 2 9003 {path}\n")
 
     def test_missing_file(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -185,12 +189,13 @@ class CommandTests(unittest.TestCase):
 
     def test_cat_numbering_and_squeeze(self):
         text = "a\n\n\nb\n"
-        self.assertEqual(self.execute_command(["cat", "-n"], text),
-                         "     1\ta\n     2\t\n     3\t\n     4\tb\n")
-        self.assertEqual(self.execute_command(["cat", "-bn"], text),
-                         "     1\ta\n\n\n     2\tb\n")
-        self.assertEqual(self.execute_command(["cat", "-sn"], text),
-                         "     1\ta\n     2\t\n     3\tb\n")
+        self.assertEqual(
+            self.execute_command(["cat", "-n"], text), "     1\ta\n     2\t\n     3\t\n     4\tb\n"
+        )
+        self.assertEqual(self.execute_command(["cat", "-bn"], text), "     1\ta\n\n\n     2\tb\n")
+        self.assertEqual(
+            self.execute_command(["cat", "-sn"], text), "     1\ta\n     2\t\n     3\tb\n"
+        )
 
     def test_cat_visible_characters(self):
         self.assertEqual(self.execute_command(["cat", "-ET"], "a\t\nlast"), "a^I$\nlast")
@@ -231,7 +236,9 @@ class CommandTests(unittest.TestCase):
             ]:
                 with self.subTest(words=words):
                     output = MemoryStream()
-                    command = CommandFactory().create([*words, str(path)], MemoryStream(), output, self.session)
+                    command = CommandFactory().create(
+                        [*words, str(path)], MemoryStream(), output, self.session
+                    )
                     command.execute()
                     command.execute()
                     self.assertEqual(output.buffer.getvalue(), expected * 2)
@@ -256,12 +263,12 @@ class CommandTests(unittest.TestCase):
             self.assertEqual(self.execute_command(["cat", "-s", str(first), str(second)]), "a\n\nb")
 
     def test_cat_b_numbers_only_nonblank(self):
-        self.assertEqual(self.execute_command(["cat", "-b"], "a\n\nb\n"),
-                         "     1\ta\n\n     2\tb\n")
+        self.assertEqual(
+            self.execute_command(["cat", "-b"], "a\n\nb\n"), "     1\ta\n\n     2\tb\n"
+        )
 
     def test_cat_n_with_line_ends(self):
-        self.assertEqual(self.execute_command(["cat", "-nE"], "a\n\n"),
-                         "     1\ta$\n     2\t$\n")
+        self.assertEqual(self.execute_command(["cat", "-nE"], "a\n\n"), "     1\ta$\n     2\t$\n")
 
     def test_cat_v_high_bytes(self):
         self.assertEqual(self.execute_command(["cat", "-v"], "é"), "M-CM-)")
@@ -278,9 +285,13 @@ class CommandTests(unittest.TestCase):
     def test_wc_selected_counts_and_order(self):
         text = "a b\n"
         for args, expected in [
-            (["-l"], "1\n"), (["-w"], "2\n"), (["-m"], "4\n"),
-            (["-c"], "4\n"), (["-cmwl"], "1 2 4 4\n"),
-            (["-l", "-w", "-l"], "1 2\n"), (["-L"], "3\n"),
+            (["-l"], "1\n"),
+            (["-w"], "2\n"),
+            (["-m"], "4\n"),
+            (["-c"], "4\n"),
+            (["-cmwl"], "1 2 4 4\n"),
+            (["-l", "-w", "-l"], "1 2\n"),
+            (["-L"], "3\n"),
         ]:
             with self.subTest(args=args):
                 self.assertEqual(self.execute_command(["wc", *args], text), expected)

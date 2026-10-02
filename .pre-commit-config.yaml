@@ -1,0 +1,32 @@
+# Установка хуков: pre-commit install
+# Прогон по всем файлам: pre-commit run --all-files
+# Версии ruff/pyright держать в синхроне с requirements-dev.txt
+default_install_hook_types: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.414
+    hooks:
+      - id: pyright
+        additional_dependencies:
+          - nodejs-wheel-binaries==24.19.0
+          - pytest==9.1.1
+          - pytest-cov==7.1.0

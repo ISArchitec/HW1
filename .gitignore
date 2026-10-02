@@ -27,6 +27,10 @@ __pycache__
 .coverage
 htmlcov/
 
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
 # macOS
 .DS_Store
 settings.json

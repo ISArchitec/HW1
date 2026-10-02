@@ -1,8 +1,8 @@
-from sentence import SentenceSequence, Sentence, Word
-from sentence import Assignment
-from utils.session import Session
 from enum import Enum, auto
+
+from sentence import Assignment, Sentence, SentenceSequence, Word
 from utils.exception import ParserError
+from utils.session import Session
 
 
 class ParsingMode(Enum):
@@ -18,6 +18,7 @@ class ParsingMode(Enum):
 
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
+
     __session: Session
 
     def __init__(self, session: Session):
@@ -44,31 +45,31 @@ class Parser:
         parsing_mode = ParsingMode.SKIP
         for symbol in sentence:
             if parsing_mode == ParsingMode.SKIP:
-                if symbol == '\'':
+                if symbol == "'":
                     parsing_mode = ParsingMode.QUOTED
-                    result.append('')
-                elif symbol == '\"':
+                    result.append("")
+                elif symbol == '"':
                     parsing_mode = ParsingMode.DOUBLE_QUOTED
-                    result.append('')
+                    result.append("")
                 elif not symbol.isspace():
                     parsing_mode = ParsingMode.NORMAL
                     result.append(symbol)
             elif parsing_mode == ParsingMode.QUOTED:
-                if symbol == '\'':
+                if symbol == "'":
                     parsing_mode = ParsingMode.NORMAL
                 else:
                     result[-1] += symbol
             elif parsing_mode == ParsingMode.DOUBLE_QUOTED:
-                if symbol == '\"':
+                if symbol == '"':
                     parsing_mode = ParsingMode.NORMAL
                 else:
                     result[-1] += symbol
             else:
                 if symbol.isspace():
                     parsing_mode = ParsingMode.SKIP
-                elif symbol == '\'':
+                elif symbol == "'":
                     parsing_mode = ParsingMode.QUOTED
-                elif symbol == '\"':
+                elif symbol == '"':
                     parsing_mode = ParsingMode.DOUBLE_QUOTED
                 else:
                     result[-1] += symbol
@@ -81,8 +82,8 @@ class Parser:
     def __make_sentence(self, words: list[str]) -> Sentence:
         assignments = []
         command_words = []
-        for (i, word) in enumerate(words):
-            if not isinstance(parsing_result:=self.__parse_element(word), Assignment):
+        for i, word in enumerate(words):
+            if not isinstance(parsing_result := self.__parse_element(word), Assignment):
                 command_words = list(map(self.__parse_word, words[i:]))
                 break
             assignments.append(parsing_result)
@@ -92,12 +93,12 @@ class Parser:
         return Word(word)
 
     def __parse_element(self, word: str) -> Assignment | Word:
-        for (i, symbol) in enumerate(word):
+        for i, symbol in enumerate(word):
             if not self.__is_token_symbol(symbol, i):
-                if symbol != '=' or i == 0:
+                if symbol != "=" or i == 0:
                     return Word(word)
                 else:
-                    return Assignment(word[:i], Word(word[i + 1:]))
+                    return Assignment(word[:i], Word(word[i + 1 :]))
         return Word(word)
 
     @staticmethod
