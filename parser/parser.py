@@ -1,38 +1,11 @@
 from sentence import SentenceSequence, Sentence, Word
 from sentence import Assignment
 from utils.session import Session
-from enum import Enum, auto
-from utils.exception import ParserError
 
-
-class ParsingMode(Enum):
-    # simple token parsing
-    NORMAL = auto()
-    # '...'
-    QUOTED = auto()
-    # "..."
-    DOUBLE_QUOTED = auto()
-    # skip whitespaces between words
-    SKIP = auto()
-
-
-class PipeRecognitionMode(Enum):
-    # simple symbol parsing
-    NORMAL = auto()
-    # '...'
-    QUOTED = auto()
-    # "..."
-    DOUBLE_QUOTED = auto()
-
-
-class SubstitutionMode(Enum):
-    # simple symbol parsing
-    NORMAL = auto()
-    IGNORE_DOLLAR = auto()
-    POST_DOLLAR = auto()
-    READ_TOKEN_NORMAL = auto()
-    READ_TOKEN_IN_BRACES = auto()
-    SINGLE_QUOTED = auto()
+from parser.pipes.pipe_splitter import PipeSplitter
+from parser.substitution.substitutor import Substitutor
+from parser.word_splitter.word_splitter import WordSplitter
+from parser.utils.utils import is_token_symbol
 
 class Parser:
     """Class, that parses line from interpreter into sentence sequence"""
@@ -54,147 +27,22 @@ class Parser:
         string = string.strip()
         if len(string) == 0:
             return []
-        pipe_sequences = [""]
-        mode = PipeRecognitionMode.NORMAL
+        splitter = PipeSplitter()
         for symbol in string:
-            if mode == PipeRecognitionMode.NORMAL:
-                if symbol == '|':
-                    pipe_sequences.append("")
-                else:
-                    pipe_sequences[-1] += symbol
-                    if symbol == "'":
-                        mode = PipeRecognitionMode.QUOTED
-                    elif symbol == '"':
-                        mode = PipeRecognitionMode.DOUBLE_QUOTED
-            elif mode == PipeRecognitionMode.QUOTED:
-                pipe_sequences[-1] += symbol
-                if symbol == "'":
-                    mode = PipeRecognitionMode.NORMAL
-            else:
-                pipe_sequences[-1] += symbol
-                if symbol == '"':
-                    mode = PipeRecognitionMode.NORMAL
-        return pipe_sequences
+            splitter.add_symbol(symbol)
+        return list(splitter)
 
     def __substitute(self, sentence: str) -> str:
-        mode = SubstitutionMode.NORMAL
-        substituted = ""
-        token = ""
-        in_double_quotes = False
-        for i, symbol in enumerate(sentence):
-            if mode == SubstitutionMode.NORMAL:
-                if symbol == "$" and i + 1 != len(sentence):
-                    mode = SubstitutionMode.POST_DOLLAR
-                elif symbol == "\\" and i + 1 != len(sentence):
-                    mode = SubstitutionMode.IGNORE_DOLLAR
-                elif symbol == "'" and i + 1 != len(sentence) and not in_double_quotes:
-                    substituted += symbol
-                    mode = SubstitutionMode.SINGLE_QUOTED
-                else:
-                    substituted += symbol
-                    if symbol == '"':
-                        in_double_quotes = not in_double_quotes
-            elif mode == SubstitutionMode.SINGLE_QUOTED:
-                substituted += symbol
-                if symbol == "'":
-                    mode = SubstitutionMode.NORMAL
-            elif mode == SubstitutionMode.IGNORE_DOLLAR:
-                if symbol == "$":
-                    substituted += "$"
-                elif symbol == "\\":
-                    substituted += "\\"
-                else:
-                    substituted += f"\\{symbol}"
-                if symbol == "'" and not in_double_quotes:
-                    mode = SubstitutionMode.SINGLE_QUOTED
-                else:
-                    if symbol == '"':
-                        in_double_quotes = not in_double_quotes
-                    mode = SubstitutionMode.NORMAL
-            elif mode == SubstitutionMode.POST_DOLLAR:
-                if self.__is_token_symbol(symbol, 0):
-                    mode = SubstitutionMode.READ_TOKEN_NORMAL
-                    token += symbol
-                elif symbol == '{':
-                    mode = SubstitutionMode.READ_TOKEN_IN_BRACES
-                else:
-                    substituted += f"${symbol}"
-                    if symbol == "'" and not in_double_quotes:
-                        mode = SubstitutionMode.SINGLE_QUOTED
-                    else:
-                        if symbol == '"':
-                            in_double_quotes = not in_double_quotes
-                        mode = SubstitutionMode.NORMAL
-            elif mode == SubstitutionMode.READ_TOKEN_IN_BRACES:
-                if self.__is_token_symbol(symbol, len(token)):
-                    token += symbol
-                elif symbol == "}":
-                    if len(token) == 0:
-                        raise ParserError("wrong substitution")
-                    substituted += self.__session.get(token)
-                    token = ""
-                    mode = SubstitutionMode.NORMAL
-                else:
-                    raise ParserError("unclosed brace")
-            else:
-                if self.__is_token_symbol(symbol, len(token)):
-                    token += symbol
-                    if i + 1 == len(sentence):
-                        substituted += self.__session.get(token)
-                        token = ""
-                        mode = SubstitutionMode.NORMAL
-                else:
-                    substituted += self.__session.get(token)
-                    substituted += symbol
-                    token = ""
-                    if symbol == "'" and not in_double_quotes:
-                        mode = SubstitutionMode.SINGLE_QUOTED
-                    else:
-                        if symbol == '"':
-                            in_double_quotes = not in_double_quotes
-                        mode = SubstitutionMode.NORMAL
-        if mode == SubstitutionMode.READ_TOKEN_IN_BRACES:
-            raise ParserError("unclosed brace")
-        return substituted
+        substitutor = Substitutor(self.__session)
+        for symbol in sentence:
+            substitutor.add_symbol(symbol)
+        return str(substitutor)
 
     def __parse_whitespaces(self, sentence: str) -> list[str]:
-        result = []
-        parsing_mode = ParsingMode.SKIP
+        splitter = WordSplitter()
         for symbol in sentence:
-            if parsing_mode == ParsingMode.SKIP:
-                if symbol == '\'':
-                    parsing_mode = ParsingMode.QUOTED
-                    result.append('')
-                elif symbol == '\"':
-                    parsing_mode = ParsingMode.DOUBLE_QUOTED
-                    result.append('')
-                elif not symbol.isspace():
-                    parsing_mode = ParsingMode.NORMAL
-                    result.append(symbol)
-            elif parsing_mode == ParsingMode.QUOTED:
-                if symbol == '\'':
-                    parsing_mode = ParsingMode.NORMAL
-                else:
-                    result[-1] += symbol
-            elif parsing_mode == ParsingMode.DOUBLE_QUOTED:
-                if symbol == '\"':
-                    parsing_mode = ParsingMode.NORMAL
-                else:
-                    result[-1] += symbol
-            else:
-                if symbol.isspace():
-                    parsing_mode = ParsingMode.SKIP
-                elif symbol == '\'':
-                    parsing_mode = ParsingMode.QUOTED
-                elif symbol == '\"':
-                    parsing_mode = ParsingMode.DOUBLE_QUOTED
-                else:
-                    result[-1] += symbol
-        if parsing_mode in (ParsingMode.QUOTED, ParsingMode.DOUBLE_QUOTED):
-            raise ParserError("Unclosed quote")
-        if len(result) == 0:
-            raise ParserError("Sentence couldn't be empty")
-        return result
+            splitter.add_symbol(symbol)
+        return list(splitter)
 
     def __make_sentence(self, words: list[str]) -> Sentence:
         assignments = []
@@ -211,13 +59,9 @@ class Parser:
 
     def __parse_element(self, word: str) -> Assignment | Word:
         for (i, symbol) in enumerate(word):
-            if not self.__is_token_symbol(symbol, i):
+            if not is_token_symbol(symbol, i):
                 if symbol != '=' or i == 0:
                     return Word(word)
                 else:
                     return Assignment(word[:i], Word(word[i + 1:]))
         return Word(word)
-
-    @staticmethod
-    def __is_token_symbol(symbol: str, position: int):
-        return symbol.isalpha() or symbol == "_" or (symbol.isdecimal() and position > 0)
