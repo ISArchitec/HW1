@@ -6,7 +6,7 @@ class PipeNormalState(PipeState):
     def add_symbol(self, symbol: str) -> None:
         from parser.pipes.states.pipe_quoted_state import PipeQuotedState
         if symbol == "|":
-            self._splitter.start_new_sequence()
+            self._splitter.add_sentence()
             return
         self._splitter.append(symbol)
         if symbol == "'":
