@@ -22,11 +22,11 @@ class WordSplitter:
         "Sets splitter state"
         self.__state = state_class(self, *args)
 
-    def start_word(self, symbol: str = "") -> None:
+    def add_word(self, symbol: str = "") -> None:
         "Adds new word"
         self.__words.append(symbol)
 
-    def append_to_word(self, symbol: str) -> None:
+    def append(self, symbol: str) -> None:
         "Appends symbol to the last word"
         self.__words[-1] += symbol
 

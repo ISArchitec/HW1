@@ -8,7 +8,7 @@ from utils.session import Session
 
 class Substitutor:
     """Container, that substitutes variables from session into sentence.
-    Feed symbols via add_symbol, read result via __str__ (finish is called automatically)
+    Feed symbols via add_symbol, read result via __str__
     """
 
     def __init__(self, session: Session):

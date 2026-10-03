@@ -22,7 +22,7 @@ class WordQuotedState(WordState):
         if symbol == self.__quote:
             self._splitter.set_state(WordUnquotedState)
         else:
-            self._splitter.append_to_word(symbol)
+            self._splitter.append(symbol)
 
     def finish(self) -> None:
         raise ParserError("Unclosed quote")

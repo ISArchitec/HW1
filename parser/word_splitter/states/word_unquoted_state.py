@@ -15,4 +15,4 @@ class WordUnquotedState(WordState):
         elif symbol == '"':
             self._splitter.set_state(WordQuotedState, '"')
         else:
-            self._splitter.append_to_word(symbol)
+            self._splitter.append(symbol)
