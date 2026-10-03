@@ -1,0 +1,108 @@
+name: GitHub to Telegram Notifications
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+      - assigned
+      - review_requested
+      - closed
+
+  issue_comment:
+    types: [created]
+
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify about new comment
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            💬 Новый комментарий
+            Репозиторий: ${{ github.repository }}
+            Автор: ${{ github.event.comment.user.login }}
+            Тип: ${{ github.event_name == 'issue_comment' && 'Обсуждение' || 'Код (diff)' }}
+            Текст: ${{ github.event.comment.body }}
+            Ссылка: ${{ github.event.comment.html_url }}
+
+      - name: Notify about new pull request
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🚀 Новый Pull Request
+            Репозиторий: ${{ github.repository }}
+            Автор: ${{ github.event.pull_request.user.login }}
+            Заголовок: ${{ github.event.pull_request.title }}
+            Статус: ${{ github.event.action == 'ready_for_review' && 'Готов к ревью (был драфтом)' || 'Открыт' }}
+            Ссылка: ${{ github.event.pull_request.html_url }}
+
+      - name: Notify about assignee
+        if: github.event_name == 'pull_request' && github.event.action == 'assigned'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            👤 Назначен исполнитель
+            PR: #${{ github.event.pull_request.number }} — ${{ github.event.pull_request.title }}
+            Кому: ${{ github.event.assignee.login }}
+            Кем: ${{ github.actor }}
+            Ссылка: ${{ github.event.pull_request.html_url }}
+
+      - name: Notify about review request
+        if: github.event_name == 'pull_request' && github.event.action == 'review_requested'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            🔍 Запрошено ревью
+            PR: #${{ github.event.pull_request.number }} — ${{ github.event.pull_request.title }}
+            Ревьюер: ${{ github.event.requested_reviewer.login }}
+            Запросил: ${{ github.actor }}
+            Ссылка: ${{ github.event.pull_request.html_url }}
+
+      - name: Notify about merged pull request
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ✅ Pull Request смержен
+            Репозиторий: ${{ github.repository }}
+            PR: #${{ github.event.pull_request.number }} — ${{ github.event.pull_request.title }}
+            Автор: ${{ github.event.pull_request.user.login }}
+            Смержил: ${{ github.actor }}
+            Ветка: ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            Ссылка: ${{ github.event.pull_request.html_url }}
+
+      - name: Notify about closed (not merged) pull request
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ Pull Request закрыт без мержа
+            PR: #${{ github.event.pull_request.number }} — ${{ github.event.pull_request.title }}
+            Автор: ${{ github.event.pull_request.user.login }}
+            Закрыл: ${{ github.actor }}
+            Ссылка: ${{ github.event.pull_request.html_url }}
