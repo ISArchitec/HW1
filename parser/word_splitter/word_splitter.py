@@ -13,28 +13,25 @@ class WordSplitter:
     def __init__(self):
         self.__words: list[str] = []
         self.__state: WordState = WordSkipState(self)
-        self.__finished = False
 
     def add_symbol(self, symbol: str) -> None:
+        "Consumes 1 symbol"
         self.__state.add_symbol(symbol)
 
     def set_state(self, state_class, *args) -> None:
+        "Sets splitter state"
         self.__state = state_class(self, *args)
 
-    def finish(self) -> None:
-        if not self.__finished:
-            self.__state.finish()
-            self.__finished = True
-            if len(self.__words) == 0:
-                raise ParserError("Sentence couldn't be empty")
-
     def start_word(self, symbol: str = "") -> None:
+        "Adds new word"
         self.__words.append(symbol)
 
     def append_to_word(self, symbol: str) -> None:
+        "Appends symbol to the last word"
         self.__words[-1] += symbol
 
     def __iter__(self) -> Iterator[str]:
-        if not self.__finished:
-            self.finish()
+        self.__state.finish()
+        if len(self.__words) == 0:
+            raise ParserError("Sentence couldn't be empty")
         return iter(self.__words)
