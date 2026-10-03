@@ -1,16 +1,12 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from parser.substitution.substitutor import Substitutor
+from parser.substitution.i_substitutor import ISubstitutor
 
 
 class SubstitutionState(ABC):
     """Base state of variable substitution"""
 
-    def __init__(self, substitutor: Substitutor):
+    def __init__(self, substitutor: ISubstitutor):
         self._substitutor = substitutor
 
     @abstractmethod

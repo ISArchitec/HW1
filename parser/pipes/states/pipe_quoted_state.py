@@ -1,11 +1,5 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
+from parser.pipes.i_pipe_splitter import IPipeSplitter
 from parser.pipes.states.pipe_state import PipeState
-
-if TYPE_CHECKING:
-    from parser.pipes.pipe_splitter import PipeSplitter
 
 
 class PipeQuotedState(PipeState):
@@ -13,7 +7,7 @@ class PipeQuotedState(PipeState):
     The quote symbol is an additional field of the state
     """
 
-    def __init__(self, splitter: PipeSplitter, quote: str):
+    def __init__(self, splitter: IPipeSplitter, quote: str):
         super().__init__(splitter)
         self.__quote = quote
 

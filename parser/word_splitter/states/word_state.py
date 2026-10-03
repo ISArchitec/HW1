@@ -1,16 +1,12 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from parser.word_splitter.word_splitter import WordSplitter
+from parser.word_splitter.i_word_splitter import IWordSplitter
 
 
 class WordState(ABC):
     """Base state of splitting sentence into words"""
 
-    def __init__(self, splitter: WordSplitter):
+    def __init__(self, splitter: IWordSplitter):
         self._splitter = splitter
 
     @abstractmethod

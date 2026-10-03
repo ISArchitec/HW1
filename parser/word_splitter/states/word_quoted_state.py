@@ -1,18 +1,12 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
+from parser.word_splitter.i_word_splitter import IWordSplitter
 from parser.word_splitter.states.word_state import WordState
 from utils.exception import ParserError
-
-if TYPE_CHECKING:
-    from parser.word_splitter.word_splitter import WordSplitter
 
 
 class WordQuotedState(WordState):
     """State of reading quoted word, quote symbol is kept in state"""
 
-    def __init__(self, splitter: WordSplitter, quote: str):
+    def __init__(self, splitter: IWordSplitter, quote: str):
         super().__init__(splitter)
         self.__quote = quote
 

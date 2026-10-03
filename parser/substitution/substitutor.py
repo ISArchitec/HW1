@@ -1,3 +1,6 @@
+from typing import Any, Callable
+
+from parser.substitution.i_substitutor import ISubstitutor
 from parser.substitution.states.substitution_normal_state import SubstitutionNormalState
 from parser.substitution.states.substitution_single_quoted_state import (
     SubstitutionSingleQuotedState,
@@ -6,7 +9,7 @@ from parser.substitution.states.substitution_state import SubstitutionState
 from utils.session import Session
 
 
-class Substitutor:
+class Substitutor(ISubstitutor):
     """Container, that substitutes variables from session into sentence.
     Feed symbols via add_symbol, read result via __str__
     """
@@ -21,7 +24,7 @@ class Substitutor:
         "Consumes symbol"
         self.__state.add_symbol(symbol)
 
-    def set_state(self, state_class, *args) -> None:
+    def set_state(self, state_class: Callable[..., Any], *args: Any) -> None:
         "Sets state"
         self.__state = state_class(self, *args)
 

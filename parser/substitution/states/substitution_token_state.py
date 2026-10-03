@@ -1,12 +1,6 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
+from parser.substitution.i_substitutor import ISubstitutor
 from parser.substitution.states.substitution_state import SubstitutionState
 from parser.utils.utils import is_token_symbol
-
-if TYPE_CHECKING:
-    from parser.substitution.substitutor import Substitutor
 
 
 class SubstitutionTokenState(SubstitutionState):
@@ -14,7 +8,7 @@ class SubstitutionTokenState(SubstitutionState):
     keeps already read part in token
     """
 
-    def __init__(self, substitutor: Substitutor, token: str):
+    def __init__(self, substitutor: ISubstitutor, token: str):
         super().__init__(substitutor)
         self.__token = token
 
