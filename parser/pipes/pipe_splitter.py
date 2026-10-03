@@ -1,5 +1,5 @@
-from collections.abc import Iterator
-from typing import Any, Callable
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from parser.pipes.i_pipe_splitter import IPipeSplitter
 from parser.pipes.states.pipe_normal_state import PipeNormalState

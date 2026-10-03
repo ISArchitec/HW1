@@ -1,5 +1,5 @@
-from collections.abc import Iterator
-from typing import Any, Callable
+from collections.abc import Callable, Iterator
+from typing import Any
 
 from parser.word_splitter.i_word_splitter import IWordSplitter
 from parser.word_splitter.states.word_skip_state import WordSkipState

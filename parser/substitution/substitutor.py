@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from parser.substitution.i_substitutor import ISubstitutor
 from parser.substitution.states.substitution_normal_state import SubstitutionNormalState
