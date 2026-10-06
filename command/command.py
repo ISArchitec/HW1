@@ -50,7 +50,8 @@ class Command(ABC):
         pass
 
     async def execute(self) -> None:
-        """Run the command, raising ExecutionError on an execution failure, managing all given resources"""
+        """Run the command, raising ExecutionError on an execution failure
+        and managing all given resources"""
         try:
             await self._execute_unsafe()
         except Exception:

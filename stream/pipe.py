@@ -15,7 +15,8 @@ class Pipe(InStream, OutStream):
     async def read_char(self) -> str:
         if self.current_line_index >= len(self.current_line):
             if self.is_closed_from_writer() and self.lines.empty():
-                # If we are closed, and queue is empty, we already read EOF, no race condition should be here
+                # If we are closed, and queue is empty, we already read EOF
+                # so no race condition should be here
                 return ""
             self.current_line_index = 0
             self.current_line = await self.lines.get()
@@ -28,7 +29,8 @@ class Pipe(InStream, OutStream):
         self.current_line_index = 0
         if index >= len(self.current_line):
             if self.is_closed_from_writer() and self.lines.empty():
-                # If we are closed, and queue is empty, we already read EOF, no race condition should be here
+                # If we are closed, and queue is empty, we already read EOF
+                # so no race condition should be here
                 return ""
             return await self.lines.get()
         return self.current_line[index:]
