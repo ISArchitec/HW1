@@ -7,7 +7,7 @@ from utils.exception import ExecutionError
 class PwdCommand(Command):
     """Print the current working directory."""
 
-    async def execute(self) -> None:
+    async def _execute_unsafe(self) -> None:
         """Write the working directory and reject any supplied arguments."""
         if self.args:
             raise ExecutionError(1)

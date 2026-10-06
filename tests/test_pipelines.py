@@ -36,7 +36,6 @@ async def run_pipeline(monkeypatch, session):
         yield run
 
 
-@missing_eof
 @pytest.mark.parametrize(
     "source, expected",
     [
@@ -57,33 +56,28 @@ async def test_builtin_pipelines(run_pipeline, source, expected):
     assert await run_pipeline(source) == expected
 
 
-@missing_eof
 async def test_example_file_pipeline(run_pipeline, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "example.txt").write_bytes(b"Some example text\n")
     assert await run_pipeline("cat example.txt | wc") == "1 3 18\n"
 
 
-@missing_eof
 async def test_file_pipeline_crosses_queue_capacity(run_pipeline, tmp_path):
     path = tmp_path / "many lines.txt"
     path.write_bytes(b"a b\n" * 250000)
     assert await run_pipeline(f'cat "{path.as_posix()}" | cat | wc -lw') == "250000 500000\n"
 
 
-@missing_eof
 async def test_substitution_and_literal_pipe_in_pipeline(run_pipeline, session):
     session.set("TEXT", "one | two")
     assert await run_pipeline('echo "$TEXT" | cat | wc -w') == "3\n"
 
 
-@missing_eof
 async def test_builtin_external_builtin_pipeline(run_pipeline):
     stage = python_stage("import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().upper())")
     assert await run_pipeline(f"echo hello | {stage} | cat") == "HELLO\n"
 
 
-@missing_eof
 async def test_two_external_stages_then_builtin(run_pipeline):
     producer = python_stage('import sys; sys.stdout.buffer.write(b"one two\\n" * 10000)')
     consumer = python_stage(
@@ -92,11 +86,6 @@ async def test_two_external_stages_then_builtin(run_pipeline):
     assert await run_pipeline(f"{producer} | {consumer} | wc -lw") == "10000 20000\n"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="SentenceSequence leaves sibling tasks alive when a stage raises",
-)
 async def test_pipeline_failure_cleans_up_other_stages(run_pipeline, tmp_path):
     baseline = asyncio.all_tasks()
     with pytest.raises(ExecutionError):
@@ -105,11 +94,6 @@ async def test_pipeline_failure_cleans_up_other_stages(run_pipeline, tmp_path):
     assert not [task for task in remaining if not task.done()]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=TimeoutError,
-    reason="A consumer exiting early leaves the producer blocked on a full Pipe",
-)
 async def test_early_consumer_exit_does_not_block_producer(run_pipeline, tmp_path):
     path = tmp_path / "large.txt"
     path.write_bytes(b"x" * 1000000)

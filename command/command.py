@@ -45,6 +45,17 @@ class Command(ABC):
             raise ExecutionError(1) from error
 
     @abstractmethod
-    async def execute(self) -> None:
-        """Run the command, raising ExecutionError on an execution failure."""
+    async def _execute_unsafe(self) -> None:
+        """Only logic for execution"""
         pass
+
+    async def execute(self) -> None:
+        """Run the command, raising ExecutionError on an execution failure
+        and managing all given resources"""
+        try:
+            await self._execute_unsafe()
+        except Exception:
+            raise
+        finally:
+            await self.in_stream.close_from_reader()
+            await self.out_stream.close_from_writer()

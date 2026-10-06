@@ -72,7 +72,7 @@ class WordCounter:
 class WcCommand(Command):
     """Count selected text metrics for files or the input stream."""
 
-    async def execute(self) -> None:
+    async def _execute_unsafe(self) -> None:
         """Write counts for each input and totals when multiple inputs are given."""
         options, operands = parse_options(self.args, WcOption)
         options = options or DEFAULT_OPTIONS

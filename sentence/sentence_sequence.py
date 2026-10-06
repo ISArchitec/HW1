@@ -31,9 +31,8 @@ class SentenceSequence:
 
     async def execute(self) -> None:
         """Executing all commands, that sequence represents"""
-        console = Console()
         streams = [Pipe(MAX_PIPE_BUFFER) for i in range(len(self.__sentence) - 1)]
-        streams = [console, *streams, console]
+        streams = [Console(), *streams, Console()]
         tasks = []
         for sentence_id in range(len(self.__sentence)):
             sentence = self.__sentence[sentence_id]

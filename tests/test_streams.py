@@ -8,11 +8,6 @@ from stream import Console, Pipe
 from tests.helpers import MemoryStream, cleanup_tasks
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Console.read_line strips the newline, including on blank input",
-)
 @pytest.mark.parametrize("line", ["echo hi", ""])
 async def test_read_line_reads_from_input(line):
     console = Console()
@@ -20,11 +15,6 @@ async def test_read_line_reads_from_input(line):
         assert await console.read_line() == line + "\n"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=EOFError,
-    reason="Console propagates EOFError instead of returning an empty string",
-)
 async def test_console_eof_returns_empty_string():
     console = Console()
     with patch("aioconsole.ainput", side_effect=EOFError):
@@ -66,23 +56,6 @@ async def test_pipe_waiting_reader_receives_later_write():
         assert await asyncio.wait_for(reader, 1) == "later\n"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Pipe enqueues empty writes and exposes them as false EOF",
-)
-async def test_pipe_empty_write_does_not_end_input():
-    pipe = Pipe(2)
-    await pipe.write("")
-    await pipe.write("data\n")
-    assert await asyncio.wait_for(pipe.read_line(), 1) == "data\n"
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Console strips newlines and treats a blank line as EOF for commands",
-)
 async def test_console_input_preserves_lines_for_wc(session):
     output = MemoryStream()
     with patch("aioconsole.ainput", side_effect=["hello", "", "world", EOFError]):

@@ -18,7 +18,7 @@ class ExecCommand(Command):
         super().__init__(args, in_stream, out_stream)
         self.session = session
 
-    async def execute(self) -> None:
+    async def _execute_unsafe(self) -> None:
         """Launch the program and map launch or exit failures to ExecutionError."""
         process = await self._start_process()
         input_task = asyncio.create_task(self._forward_input(process))

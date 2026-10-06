@@ -5,6 +5,6 @@ from utils.exception import ExitInterrupt
 class ExitCommand(Command):
     """Terminate the interpreter with a successful exit status."""
 
-    async def execute(self) -> None:
+    async def _execute_unsafe(self) -> None:
         """Raise SystemExit with exit code zero."""
         raise ExitInterrupt
