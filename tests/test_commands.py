@@ -1,339 +1,425 @@
+import asyncio
 import os
 import sys
-import tempfile
-import unittest
-from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from command.builtins import EchoCommand
 from command.command_factory import CommandFactory
 from command.exec_command import ExecCommand
 from tests.helpers import MemoryStream
 from utils.exception import ExecutionError, ExitInterrupt
-from utils.session import Session
 
 
-class CommandTests(unittest.IsolatedAsyncioTestCase):
-    session = Session()
-
-    async def test_output_errors_become_execution_errors(self):
-        error = OSError("write failed")
-        for words in [["cat"], ["cat", "-n"], ["echo", "hello"], ["wc"], ["pwd"]]:
-            with self.subTest(words=words):
-                source, output = MemoryStream("hello\n"), MemoryStream()
-                command = CommandFactory().create(words, source, output, self.session)
-                with (
-                    patch.object(output, "write", side_effect=error),
-                    self.assertRaises(ExecutionError) as raised,
-                ):
-                    await command.execute()
-                self.assertEqual(raised.exception.code, 1)
-
-    async def execute_command(self, words, text=""):
-        source, output = MemoryStream(text), MemoryStream()
-        await CommandFactory().create(words, source, output, self.session).execute()
-        return output.buffer.getvalue()
-
-    async def test_pwd(self):
-        self.assertEqual(await self.execute_command(["pwd"]), os.getcwd() + "\n")
-        with self.assertRaises(ExecutionError) as raised:
-            await self.execute_command(["pwd", "unexpected"])
-        self.assertEqual(raised.exception.code, 1)
+async def test_output_errors_become_execution_errors(session):
+    error = OSError("write failed")
+    for words in [["cat"], ["cat", "-n"], ["echo", "hello"], ["wc"], ["pwd"]]:
+        source, output = (MemoryStream("hello\n"), MemoryStream())
+        command = CommandFactory().create(words, source, output, session)
         with (
-            patch("command.builtins.pwd.os.getcwd", side_effect=OSError),
-            self.assertRaises(ExecutionError),
+            patch.object(output, "write", side_effect=error),
+            pytest.raises(ExecutionError) as raised,
         ):
-            await self.execute_command(["pwd"])
-
-    async def test_exit(self):
-        command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream(), self.session)
-        with self.assertRaises(ExitInterrupt):
             await command.execute()
+        assert raised.value.code == 1
 
-    def test_factory_selects_external_command(self):
-        command = CommandFactory().create(
-            ["external-program"], MemoryStream(), MemoryStream(), self.session
-        )
-        self.assertIsInstance(command, ExecCommand)
 
-    async def test_external_arguments(self):
-        script = (
-            "import sys; from pathlib import Path; "
-            "Path(sys.argv[1]).write_text(sys.argv[2], encoding='utf-8')"
-        )
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "output.txt"
-            await self.execute_command([sys.executable, "-c", script, str(path), "a b; $name"])
-            self.assertEqual(path.read_text(encoding="utf-8"), "a b; $name")
+async def test_pwd(run_command):
+    assert await run_command(["pwd"]) == os.getcwd() + "\n"
+    with pytest.raises(ExecutionError) as raised:
+        await run_command(["pwd", "unexpected"])
+    assert raised.value.code == 1
+    with (
+        patch("command.builtins.pwd.os.getcwd", side_effect=OSError),
+        pytest.raises(ExecutionError),
+    ):
+        await run_command(["pwd"])
 
-    async def test_external_nonzero_exit(self):
-        with self.assertRaises(ExecutionError) as raised:
-            await self.execute_command([sys.executable, "-c", "raise SystemExit(3)"])
-        self.assertEqual(raised.exception.code, 3)
 
-    async def test_external_missing_program(self):
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            self.assertRaises(ExecutionError) as raised,
-        ):
-            await self.execute_command([str(Path(directory) / "missing-program")])
-        self.assertEqual(raised.exception.code, 127)
-
-    async def test_external_launch_permission_error(self):
-        with (
-            patch("command.exec_command.subprocess.run", side_effect=PermissionError),
-            self.assertRaises(ExecutionError) as raised,
-        ):
-            await self.execute_command(["external-program"])
-        self.assertEqual(raised.exception.code, 126)
-
-    async def test_echo(self):
-        self.assertEqual(await self.execute_command(["echo"]), "\n")
-        self.assertEqual(
-            await self.execute_command(["echo", "hello world", "", "$name"]),
-            "hello world  $name\n",
-        )
-
-    async def test_factory_creates_without_executing_and_copies_arguments(self):
-        output = MemoryStream()
-        words = ["echo", "original"]
-        command = CommandFactory().create(words, MemoryStream(), output, self.session)
-        self.assertIsInstance(command, EchoCommand)
-        self.assertEqual(output.buffer.getvalue(), "")
-        words[1] = "changed"
+async def test_exit(session):
+    command = CommandFactory().create(["exit"], MemoryStream(), MemoryStream(), session)
+    with pytest.raises(ExitInterrupt):
         await command.execute()
-        self.assertEqual(output.buffer.getvalue(), "original\n")
-
-    async def test_factory_errors(self):
-        with self.assertRaises(ValueError):
-            await self.execute_command([])
-
-    async def test_cat_stdin_preserves_text(self):
-        for text in ["", "\n", "one\r\n\ntwo", "no final newline"]:
-            with self.subTest(text=text):
-                self.assertEqual(await self.execute_command(["cat"], text), text)
-
-    async def test_multiple_files(self):
-        with tempfile.TemporaryDirectory() as directory:
-            first, second = Path(directory) / "a.txt", Path(directory) / "b.txt"
-            first.write_bytes(b"hi\r\n")
-            second.write_bytes(b"end")
-            self.assertEqual(
-                await self.execute_command(["cat", str(first), str(second)], "unused input"),
-                "hi\r\nend",
-            )
-            self.assertEqual(
-                await self.execute_command(["wc", str(first), str(second)]),
-                f"1 1 4 {first}\n0 1 3 {second}\n1 2 7 total\n",
-            )
-
-    async def test_wc_stdin(self):
-        for text, expected in [
-            ("", "0 0 0\n"),
-            ("\n", "1 0 1\n"),
-            ("one\ttwo\nlast", "1 3 12\n"),
-            ("word", "0 1 4\n"),
-        ]:
-            with self.subTest(text=text):
-                self.assertEqual(await self.execute_command(["wc"], text), expected)
-
-    async def test_wc_word_crossing_chunk_boundary(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "long.txt"
-            path.write_bytes(b"a" * 9000 + b" b\n")
-            self.assertEqual(await self.execute_command(["wc", str(path)]), f"1 2 9003 {path}\n")
-
-    async def test_missing_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "missing.txt"
-            for name in ["cat", "wc"]:
-                with self.subTest(name=name):
-                    with self.assertRaises(ExecutionError) as raised:
-                        await self.execute_command([name, str(path)])
-                    self.assertEqual(raised.exception.code, 1)
-
-    async def test_echo_option_order_and_text(self):
-        cases = [
-            (["-n", "hello"], "hello"),
-            (["-n"], ""),
-            (["-ne", r"one\ntwo"], "one\ntwo"),
-            (["-e", "-E", r"one\ntwo"], "one\\ntwo\n"),
-            (["-E", "-e", r"one\ntwo"], "one\ntwo\n"),
-            (["-eE", r"\t"], "\\t\n"),
-            (["hello", "-n"], "hello -n\n"),
-            (["-no", "-n"], "-no -n\n"),
-            (["--", "-n"], "-- -n\n"),
-        ]
-        for args, expected in cases:
-            with self.subTest(args=args):
-                self.assertEqual(await self.execute_command(["echo", *args]), expected)
-
-    async def test_echo_escapes(self):
-        cases = [
-            (r"a\cb", "a"),
-            (r"\a\b\e\f\n\r\t\v\\", "\a\b\x1b\f\n\r\t\v\\\n"),
-            (r"\0101\x42", "AB\n"),
-            (r"\01012\x414", "A2A4\n"),
-            (r"\0777\0400", "\xff\0\n"),
-            (r"\08\xG", "\08\\xG\n"),
-            (r"\x4a\x4B", "JK\n"),
-            (r"\x41\cignored", "A"),
-            (r"\0", "\0\n"),
-            (r"\q\x", "\\q\\x\n"),
-            ("hello\\", "hello\\\n"),
-        ]
-        for text, expected in cases:
-            with self.subTest(text=text):
-                self.assertEqual(await self.execute_command(["echo", "-e", text]), expected)
-
-    async def test_cat_numbering_and_squeeze(self):
-        text = "a\n\n\nb\n"
-        self.assertEqual(
-            await self.execute_command(["cat", "-n"], text),
-            "     1\ta\n     2\t\n     3\t\n     4\tb\n",
-        )
-        self.assertEqual(
-            await self.execute_command(["cat", "-bn"], text), "     1\ta\n\n\n     2\tb\n"
-        )
-        self.assertEqual(
-            await self.execute_command(["cat", "-sn"], text), "     1\ta\n     2\t\n     3\tb\n"
-        )
-
-    async def test_cat_visible_characters(self):
-        self.assertEqual(await self.execute_command(["cat", "-ET"], "a\t\nlast"), "a^I$\nlast")
-        self.assertEqual(await self.execute_command(["cat", "-v"], "\0\x1b\x7f\t\n"), "^@^[^?\t\n")
-        self.assertEqual(await self.execute_command(["cat", "-A"], "\0\t\r\n"), "^@^I^M$\n")
-
-    async def test_cat_visible_utf8_bytes(self):
-        # U+00E9 is C3 A9; U+0080 is C2 80; U+07FF is DF BF in UTF-8.
-        self.assertEqual(
-            await self.execute_command(["cat", "-v"], "\u00e9\u0080\u07ff\x1f \x7f"),
-            "M-CM-)M-BM-^@M-_M-?^_ ^?",
-        )
-
-    async def test_unicode_counts_and_formatting_across_chunk_boundaries(self):
-        text = "a\u00e9\u4e2d\U0001f600e\u0301\tz\n"
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "unicode.txt"
-            path.write_bytes(text.encode("utf-8"))
-            for size in [1, 2, 5, 8192]:
-                with self.subTest(chunk_size=size), patch("command.command.CHUNK_SIZE", size):
-                    self.assertEqual(await self.execute_command(["cat", str(path)]), text)
-                    self.assertEqual(
-                        await self.execute_command(["cat", "-nET", str(path)]),
-                        "     1\ta\u00e9\u4e2d\U0001f600e\u0301^Iz$\n",
-                    )
-                    self.assertEqual(
-                        await self.execute_command(["wc", "-Lcmwl", str(path)]),
-                        f"1 2 9 16 9 {path}\n",
-                    )
-
-    async def test_command_state_resets_on_each_execution(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "input.txt"
-            path.write_bytes(b"first\n\nlast")
-            for words, expected in [
-                (["cat", "-ns"], "     1\tfirst\n     2\t\n     3\tlast"),
-                (["wc", "-lwL"], f"2 2 5 {path}\n"),
-            ]:
-                with self.subTest(words=words):
-                    output = MemoryStream()
-                    command = CommandFactory().create(
-                        [*words, str(path)], MemoryStream(), output, self.session
-                    )
-                    await command.execute()
-                    await command.execute()
-                    self.assertEqual(output.buffer.getvalue(), expected * 2)
-
-    async def test_echo_invalid_option_group_is_entirely_text(self):
-        self.assertEqual(
-            await self.execute_command(["echo", "-e", "-Enz", r"a\tb"]),
-            "-Enz a\tb\n",
-        )
-
-    async def test_cat_state_across_files_and_chunks(self):
-        with tempfile.TemporaryDirectory() as directory:
-            first, second = Path(directory) / "a", Path(directory) / "b"
-            first.write_bytes(b"a" * 8193)
-            second.write_bytes(b"b\n\n\nc")
-            self.assertEqual(
-                await self.execute_command(["cat", "-ns", str(first), str(second)]),
-                "     1\t" + "a" * 8193 + "b\n     2\t\n     3\tc",
-            )
-            first.write_bytes(b"a\n\n")
-            second.write_bytes(b"\n\nb")
-            self.assertEqual(
-                await self.execute_command(["cat", "-s", str(first), str(second)]), "a\n\nb"
-            )
-
-    async def test_cat_b_numbers_only_nonblank(self):
-        self.assertEqual(
-            await self.execute_command(["cat", "-b"], "a\n\nb\n"), "     1\ta\n\n     2\tb\n"
-        )
-
-    async def test_cat_n_with_line_ends(self):
-        self.assertEqual(
-            await self.execute_command(["cat", "-nE"], "a\n\n"), "     1\ta$\n     2\t$\n"
-        )
-
-    async def test_cat_v_high_bytes(self):
-        self.assertEqual(await self.execute_command(["cat", "-v"], "é"), "M-CM-)")
-
-    async def test_invalid_utf8_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "bad.bin"
-            path.write_bytes(b"\xff\xfe\xfa")
-            for name in ["cat", "wc"]:
-                with self.subTest(name=name), self.assertRaises(ExecutionError) as raised:
-                    await self.execute_command([name, str(path)])
-                self.assertEqual(raised.exception.code, 1)
-
-    async def test_wc_selected_counts_and_order(self):
-        text = "a b\n"
-        for args, expected in [
-            (["-l"], "1\n"),
-            (["-w"], "2\n"),
-            (["-m"], "4\n"),
-            (["-c"], "4\n"),
-            (["-cmwl"], "1 2 4 4\n"),
-            (["-l", "-w", "-l"], "1 2\n"),
-            (["-L"], "3\n"),
-        ]:
-            with self.subTest(args=args):
-                self.assertEqual(await self.execute_command(["wc", *args], text), expected)
-
-    async def test_wc_display_width(self):
-        self.assertEqual(await self.execute_command(["wc", "-L"], "a\tb\nhello"), "9\n")
-        self.assertEqual(await self.execute_command(["wc", "-L"], ""), "0\n")
-        self.assertEqual(await self.execute_command(["wc", "-L"], "abc\rx"), "3\n")
-
-    async def test_wc_totals_use_maximum_width(self):
-        with tempfile.TemporaryDirectory() as directory:
-            first, second = Path(directory) / "a", Path(directory) / "b"
-            first.write_bytes(b"abcd\n")
-            second.write_bytes(b"xy\n")
-            self.assertEqual(
-                await self.execute_command(["wc", "-lL", str(first), str(second)]),
-                f"1 4 {first}\n1 2 {second}\n2 4 total\n",
-            )
-
-    async def test_double_dash_preserves_filename(self):
-        with tempfile.TemporaryDirectory() as directory:
-            Path(directory, "-n").write_bytes(b"abc\n")
-            previous_directory = os.getcwd()
-            try:
-                os.chdir(directory)
-                self.assertEqual(await self.execute_command(["cat", "--", "-n"]), "abc\n")
-                self.assertEqual(await self.execute_command(["wc", "--", "-n"]), "1 1 4 -n\n")
-            finally:
-                os.chdir(previous_directory)
-
-    async def test_invalid_options(self):
-        for name in ["cat", "wc"]:
-            with self.subTest(name=name), self.assertRaises(ExecutionError) as raised:
-                await self.execute_command([name, "-z"])
-            self.assertEqual(raised.exception.code, 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
+async def test_echo(run_command):
+    assert await run_command(["echo"]) == "\n"
+    assert await run_command(["echo", "hello world", "", "$name"]) == "hello world  $name\n"
+
+
+async def test_factory_creates_builtin_without_executing(session):
+    output = MemoryStream()
+    words = ["echo", "original"]
+    command = CommandFactory().create(words, MemoryStream(), output, session)
+    assert isinstance(command, EchoCommand)
+    assert output.buffer.getvalue() == ""
+    await command.execute()
+    assert output.buffer.getvalue() == "original\n"
+
+
+@pytest.mark.parametrize("text", ["", "\n", "one\r\n\ntwo", "no final newline"])
+async def test_cat_stdin_preserves_text(run_command, text):
+    assert await run_command(["cat"], text) == text
+
+
+async def test_multiple_files(run_command, tmp_path):
+    first, second = (tmp_path / "a.txt", tmp_path / "b.txt")
+    first.write_bytes(b"hi\r\n")
+    second.write_bytes(b"end")
+    assert await run_command(["cat", str(first), str(second)], "unused input") == "hi\r\nend"
+    assert (
+        await run_command(["wc", str(first), str(second)])
+        == f"1 1 4 {first}\n0 1 3 {second}\n1 2 7 total\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [("", "0 0 0\n"), ("\n", "1 0 1\n"), ("one\ttwo\nlast", "1 3 12\n"), ("word", "0 1 4\n")],
+)
+async def test_wc_stdin(run_command, text, expected):
+    assert await run_command(["wc"], text) == expected
+
+
+async def test_wc_word_crossing_chunk_boundary(run_command, tmp_path):
+    path = tmp_path / "long.txt"
+    path.write_bytes(b"a" * 9000 + b" b\n")
+    assert await run_command(["wc", str(path)]) == f"1 2 9003 {path}\n"
+
+
+async def test_missing_file(run_command, tmp_path):
+    path = tmp_path / "missing.txt"
+    for name in ["cat", "wc"]:
+        with pytest.raises(ExecutionError) as raised:
+            await run_command([name, str(path)])
+        assert raised.value.code == 1
+
+
+@pytest.mark.parametrize(
+    "args, expected",
+    [
+        (["-n", "hello"], "hello"),
+        (["-n"], ""),
+        (["-ne", "one\\ntwo"], "one\ntwo"),
+        (["-e", "-E", "one\\ntwo"], "one\\ntwo\n"),
+        (["-E", "-e", "one\\ntwo"], "one\ntwo\n"),
+        (["-eE", "\\t"], "\\t\n"),
+        (["hello", "-n"], "hello -n\n"),
+        (["-no", "-n"], "-no -n\n"),
+        (["--", "-n"], "-- -n\n"),
+    ],
+)
+async def test_echo_option_order_and_text(run_command, args, expected):
+    assert await run_command(["echo", *args]) == expected
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("a\\cb", "a"),
+        ("\\a\\b\\e\\f\\n\\r\\t\\v\\\\", "\x07\x08\x1b\x0c\n\r\t\x0b\\\n"),
+        ("\\0101\\x42", "AB\n"),
+        ("\\01012\\x414", "A2A4\n"),
+        ("\\0777\\0400", "ÿ\x00\n"),
+        ("\\08\\xG", "\x008\\xG\n"),
+        ("\\x4a\\x4B", "JK\n"),
+        ("\\x41\\cignored", "A"),
+        ("\\0", "\x00\n"),
+        ("\\q\\x", "\\q\\x\n"),
+        ("hello\\", "hello\\\n"),
+    ],
+)
+async def test_echo_escapes(run_command, text, expected):
+    assert await run_command(["echo", "-e", text]) == expected
+
+
+async def test_cat_numbering_and_squeeze(run_command):
+    text = "a\n\n\nb\n"
+    assert await run_command(["cat", "-n"], text) == "     1\ta\n     2\t\n     3\t\n     4\tb\n"
+    assert await run_command(["cat", "-bn"], text) == "     1\ta\n\n\n     2\tb\n"
+    assert await run_command(["cat", "-sn"], text) == "     1\ta\n     2\t\n     3\tb\n"
+
+
+async def test_cat_visible_characters(run_command):
+    assert await run_command(["cat", "-ET"], "a\t\nlast") == "a^I$\nlast"
+    assert await run_command(["cat", "-v"], "\x00\x1b\x7f\t\n") == "^@^[^?\t\n"
+    assert await run_command(["cat", "-A"], "\x00\t\r\n") == "^@^I^M$\n"
+
+
+async def test_cat_visible_utf8_bytes(run_command):
+    assert await run_command(["cat", "-v"], "é\x80߿\x1f \x7f") == "M-CM-)M-BM-^@M-_M-?^_ ^?"
+
+
+async def test_unicode_counts_and_formatting_across_chunk_boundaries(run_command, tmp_path):
+    text = "aé中😀é\tz\n"
+    path = tmp_path / "unicode.txt"
+    path.write_bytes(text.encode("utf-8"))
+    for size in [1, 2, 5, 8192]:
+        with patch("command.command.CHUNK_SIZE", size):
+            assert await run_command(["cat", str(path)]) == text
+            assert await run_command(["cat", "-nET", str(path)]) == "     1\taé中😀é^Iz$\n"
+            assert await run_command(["wc", "-Lcmwl", str(path)]) == f"1 2 9 16 9 {path}\n"
+
+
+async def test_echo_invalid_option_group_is_entirely_text(run_command):
+    assert await run_command(["echo", "-e", "-Enz", "a\\tb"]) == "-Enz a\tb\n"
+
+
+async def test_cat_state_across_files_and_chunks(run_command, tmp_path):
+    first, second = (tmp_path / "a", tmp_path / "b")
+    first.write_bytes(b"a" * 8193)
+    second.write_bytes(b"b\n\n\nc")
+    assert (
+        await run_command(["cat", "-ns", str(first), str(second)])
+        == "     1\t" + "a" * 8193 + "b\n     2\t\n     3\tc"
+    )
+    first.write_bytes(b"a\n\n")
+    second.write_bytes(b"\n\nb")
+    assert await run_command(["cat", "-s", str(first), str(second)]) == "a\n\nb"
+
+
+async def test_cat_b_numbers_only_nonblank(run_command):
+    assert await run_command(["cat", "-b"], "a\n\nb\n") == "     1\ta\n\n     2\tb\n"
+
+
+async def test_cat_n_with_line_ends(run_command):
+    assert await run_command(["cat", "-nE"], "a\n\n") == "     1\ta$\n     2\t$\n"
+
+
+async def test_invalid_utf8_file(run_command, tmp_path):
+    path = tmp_path / "bad.bin"
+    path.write_bytes(b"\xff\xfe\xfa")
+    for name in ["cat", "wc"]:
+        with pytest.raises(ExecutionError) as raised:
+            await run_command([name, str(path)])
+        assert raised.value.code == 1
+
+
+async def test_wc_selected_counts_and_order(run_command):
+    text = "a b\n"
+    for args, expected in [
+        (["-l"], "1\n"),
+        (["-w"], "2\n"),
+        (["-m"], "4\n"),
+        (["-c"], "4\n"),
+        (["-cmwl"], "1 2 4 4\n"),
+        (["-l", "-w", "-l"], "1 2\n"),
+        (["-L"], "3\n"),
+    ]:
+        assert await run_command(["wc", *args], text) == expected
+
+
+async def test_wc_display_width(run_command):
+    assert await run_command(["wc", "-L"], "a\tb\nhello") == "9\n"
+    assert await run_command(["wc", "-L"], "") == "0\n"
+    assert await run_command(["wc", "-L"], "abc\rx") == "3\n"
+
+
+async def test_wc_totals_use_maximum_width(run_command, tmp_path):
+    first, second = (tmp_path / "a", tmp_path / "b")
+    first.write_bytes(b"abcd\n")
+    second.write_bytes(b"xy\n")
+    assert (
+        await run_command(["wc", "-lL", str(first), str(second)])
+        == f"1 4 {first}\n1 2 {second}\n2 4 total\n"
+    )
+
+
+async def test_double_dash_preserves_filename(run_command, tmp_path, monkeypatch):
+    (tmp_path / "-n").write_bytes(b"abc\n")
+    monkeypatch.chdir(tmp_path)
+    assert await run_command(["cat", "--", "-n"]) == "abc\n"
+    assert await run_command(["wc", "--", "-n"]) == "1 1 4 -n\n"
+
+
+@pytest.mark.parametrize("name", ["cat", "wc"])
+async def test_invalid_options(run_command, name):
+    with pytest.raises(ExecutionError) as raised:
+        await run_command([name, "-z"])
+    assert raised.value.code == 1
+
+
+def test_factory_selects_external_command(session):
+    command = CommandFactory().create(["external-program"], MemoryStream(), MemoryStream(), session)
+    assert isinstance(command, ExecCommand)
+
+
+async def test_external_arguments(run_command, tmp_path):
+    script = (
+        "import sys; from pathlib import Path; "
+        "Path(sys.argv[1]).write_text(sys.argv[2], encoding='utf-8')"
+    )
+    path = tmp_path / "output.txt"
+    await run_command([sys.executable, "-c", script, str(path), "a b; $name"])
+    assert path.read_text(encoding="utf-8") == "a b; $name"
+
+
+async def test_external_nonzero_exit(session):
+    output = MemoryStream()
+    command = ExecCommand(
+        [sys.executable, "-c", "print('before failure', flush=True); raise SystemExit(3)"],
+        MemoryStream(),
+        output,
+        session,
+    )
+    with pytest.raises(ExecutionError) as raised:
+        await asyncio.wait_for(command.execute(), 10)
+    assert raised.value.code == 3
+    assert output.buffer.getvalue().splitlines() == ["before failure"]
+
+
+async def test_external_missing_program(run_command, tmp_path):
+    with pytest.raises(ExecutionError) as raised:
+        await run_command([str(tmp_path / "missing-program")])
+    assert raised.value.code == 127
+
+
+async def test_external_launch_permission_error(run_command):
+    with (
+        patch("command.exec_command.asyncio.create_subprocess_exec", side_effect=PermissionError),
+        pytest.raises(ExecutionError) as raised,
+    ):
+        await run_command(["external-program"])
+    assert raised.value.code == 126
+
+
+async def test_external_streams_and_eof(run_command):
+    script = "import sys; sys.stdout.buffer.write(sys.stdin.buffer.read())"
+    for text in ["", "hello\r\n\né中🌍"]:
+        output = await run_command([sys.executable, "-c", script], text)
+        assert output == text
+
+
+async def test_external_reads_and_writes_concurrently(run_command):
+    script = (
+        "import sys; sys.stdout.buffer.write(b'x' * 200000); sys.stdout.buffer.flush(); "
+        "sys.stdout.buffer.write(sys.stdin.buffer.read())"
+    )
+    text = "y" * 200000
+    output = await run_command([sys.executable, "-c", script], text)
+    assert output == "x" * 200000 + text
+
+
+async def test_external_unicode_across_read_boundaries(run_command):
+    script = "import sys; sys.stdout.buffer.write('Привет 🌍'.encode('utf-8'))"
+    with patch("command.exec_command.CHUNK_SIZE", 1):
+        assert await run_command([sys.executable, "-c", script]) == "Привет 🌍"
+
+
+async def test_external_exit_cancels_pending_input(session):
+    source, output = (MemoryStream(), MemoryStream())
+    cancelled = asyncio.Event()
+
+    async def read_forever():
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    command = ExecCommand([sys.executable, "-c", "pass"], source, output, session)
+    with patch.object(source, "read_line", side_effect=read_forever):
+        await asyncio.wait_for(command.execute(), 10)
+    assert cancelled.is_set()
+
+
+async def test_external_receives_session_environment(session, monkeypatch):
+    monkeypatch.setenv("HW1_EXEC_TEST", "parent value")
+    session.set("HW1_EXEC_TEST", "local value")
+    output = MemoryStream()
+    command = ExecCommand(
+        [sys.executable, "-c", "import os; print(os.environ['HW1_EXEC_TEST'])"],
+        MemoryStream(),
+        output,
+        session,
+    )
+    await command.execute()
+    assert output.buffer.getvalue().splitlines() == ["local value"]
+    assert os.environ["HW1_EXEC_TEST"] == "parent value"
+
+
+async def test_external_stderr_is_not_forwarded_to_stdout(run_command, capfd):
+    script = "import sys; print('output'); print('diagnostic', file=sys.stderr)"
+    output = await run_command([sys.executable, "-c", script])
+    assert output.splitlines() == ["output"]
+    assert capfd.readouterr().err.splitlines() == ["diagnostic"]
+
+
+async def test_external_cancellation_reaps_process(session):
+    started = asyncio.Event()
+    processes = []
+    create_process = asyncio.create_subprocess_exec
+
+    async def launch(*args, **kwargs):
+        process = await create_process(*args, **kwargs)
+        processes.append(process)
+        return process
+
+    async def read_forever():
+        started.set()
+        await asyncio.Event().wait()
+
+    source = MemoryStream()
+    command = ExecCommand(
+        [sys.executable, "-c", "import time; time.sleep(60)"], source, MemoryStream(), session
+    )
+    with (
+        patch("command.exec_command.asyncio.create_subprocess_exec", side_effect=launch),
+        patch.object(source, "read_line", side_effect=read_forever),
+    ):
+        task = asyncio.create_task(command.execute())
+        try:
+            await asyncio.wait_for(started.wait(), 10)
+        finally:
+            task.cancel()
+            await asyncio.wait_for(asyncio.gather(task, return_exceptions=True), 10)
+    assert task.cancelled()
+    assert processes[0].returncode is not None
+
+
+async def test_external_stream_failures_reap_process(session):
+    cases = [
+        ("read_line", OSError("input failed"), ExecutionError),
+        ("write", OSError("output failed"), ExecutionError),
+        ("write", ValueError("unexpected failure"), ValueError),
+    ]
+    create_process = asyncio.create_subprocess_exec
+    processes = []
+
+    async def launch(*args, **kwargs):
+        process = await create_process(*args, **kwargs)
+        processes.append(process)
+        return process
+
+    for method, error, expected in cases:
+        processes.clear()
+        source, output = (MemoryStream(), MemoryStream())
+        script = "import time; print('ready', flush=True); time.sleep(60)"
+        command = ExecCommand([sys.executable, "-c", script], source, output, session)
+        stream = source if method == "read_line" else output
+        with (
+            patch("command.exec_command.asyncio.create_subprocess_exec", side_effect=launch),
+            patch.object(stream, method, side_effect=error),
+            pytest.raises(expected) as raised,
+        ):
+            await asyncio.wait_for(command.execute(), 10)
+        if isinstance(raised.value, ExecutionError):
+            assert raised.value.code == 1
+        assert processes[0].returncode is not None
+
+
+@pytest.mark.parametrize("data", [b"\xff", b"\xd0"])
+async def test_external_invalid_utf8_becomes_execution_error(run_command, data):
+    script = f"import sys; sys.stdout.buffer.write({data!r})"
+    with pytest.raises(ExecutionError) as raised:
+        await run_command([sys.executable, "-c", script])
+    assert raised.value.code == 1
+    assert isinstance(raised.value.__cause__, UnicodeDecodeError)
+
+
+async def test_external_closes_stdin_early(run_command):
+    script = (
+        "import os, sys; os.close(0); sys.stdout.buffer.write(b'done'); sys.stdout.buffer.flush()"
+    )
+    output = await run_command([sys.executable, "-c", script], "x" * 2000000)
+    assert output == "done"

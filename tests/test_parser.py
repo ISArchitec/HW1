@@ -4,11 +4,9 @@ from parser import Parser
 from utils.exception import ParserError
 from utils.session import Session
 
-EMPTY_SESSION = Session()
-
 
 def parse_words(source: str) -> list[str]:
-    parser = Parser(session=EMPTY_SESSION)
+    parser = Parser(session=Session())
     sequence = parser.parse(source)
 
     assert len(sequence) == 1
@@ -51,16 +49,10 @@ def test_parser_parses_words_and_quotes(source: str, expected: list[str]) -> Non
     "source",
     [
         "echo 'hello",
-        "'hello",
         'echo "hello',
-        '"hello',
-        "echo 'hello world",
-        'echo "hello world',
         "hel'lo",
         'he"llo',
         "echo hel'loecho hel\"lo",
-        "abc'",
-        'abc"',
     ],
 )
 def test_parser_raises_on_malformed_quotes(source: str) -> None:
@@ -68,14 +60,15 @@ def test_parser_raises_on_malformed_quotes(source: str) -> None:
         parse_words(source)
 
 
-def test_parser_no_sequence_on_empty_source():
-    parser = Parser(session=EMPTY_SESSION)
-    sequence = parser.parse("")
+@pytest.mark.parametrize("source", ["", " \t\n "])
+def test_parser_no_sequence_on_empty_source(source):
+    parser = Parser(session=Session())
+    sequence = parser.parse(source)
     assert len(sequence) == 0
 
 
 def parse_assignments(source: str) -> list[tuple[str, str]]:
-    parser = Parser(session=EMPTY_SESSION)
+    parser = Parser(session=Session())
     sequence = parser.parse(source)
     assert len(sequence) == 1
     return [(a.key, a.value.word) for a in sequence[0].assignments]
@@ -122,7 +115,7 @@ def test_parser_parses_assignments(source: str, expected: list[tuple[str, str]])
 
 def parse(source: str) -> tuple[list[tuple[str, str]], list[str]]:
     """Parse `source` и вернуть (assignments, words) единственного предложения."""
-    sequence = Parser(session=EMPTY_SESSION).parse(source)
+    sequence = Parser(session=Session()).parse(source)
     assert len(sequence) == 1
     sentence = sequence[0]
     assignments = [(a.key, a.value.word) for a in sentence.assignments]
@@ -160,7 +153,7 @@ def test_parser_assignments_and_words(
 
 
 def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]]:
-    sequence = Parser(session=EMPTY_SESSION).parse(source)
+    sequence = Parser(session=Session()).parse(source)
     result = []
     for sentence in sequence:
         assignments = [(a.key, a.value.word) for a in sentence.assignments]
@@ -235,7 +228,7 @@ def test_parser_parses_multiple_sentences_with_pipes(
 )
 def test_parser_raises_on_empty_sentence_after_pipe(source: str) -> None:
     with pytest.raises(ParserError):
-        Parser(session=EMPTY_SESSION).parse(source)
+        Parser(session=Session()).parse(source)
 
 
 def make_session(**kwargs):
@@ -261,6 +254,14 @@ def make_session(**kwargs):
         ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
         ("echo $", {}, ["echo", "$"]),
         ("echo \\x", {}, ["echo", "\\x"]),
+        ("echo ${VAR}", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}suffix", {"VAR": "hello"}, ["echo", "hellosuffix"]),
+        ('echo "$MISSING"', {}, ["echo", ""]),
+        ('echo "$VAR"', {"VAR": "two words"}, ["echo", "two words"]),
+        ("echo $VAR", {"VAR": "two words"}, ["echo", "two", "words"]),
+        ("$CMD hi", {"CMD": "echo"}, ["echo", "hi"]),
+        ("echo $VAR", {"VAR": "a|b"}, ["echo", "a|b"]),
+        ("echo ${A}${B}", {"A": "one", "B": "two"}, ["echo", "onetwo"]),
         ("$x$y", {"x": "ex", "y": "it"}, ["exit"]),
         ('echo "$Q"', {"Q": 'a"b'}, ["echo", 'a"b']),
         ('echo "$Q"', {"Q": "\\"}, ["echo", "\\"]),

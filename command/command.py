@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 
+import aiofiles
+
 from stream import InStream, OutStream
 from utils.exception import ExecutionError
 
@@ -24,12 +26,11 @@ class Command(ABC):
                     yield line
                     line = await self.in_stream.read_line()
             else:
-                # TODO think about async file operations
-                with open(path, encoding="utf-8", newline="") as source:
-                    chunk = source.read(CHUNK_SIZE)
+                async with aiofiles.open(path, encoding="utf-8", newline="") as source:
+                    chunk = await source.read(CHUNK_SIZE)
                     while chunk:
                         yield chunk
-                        chunk = source.read(CHUNK_SIZE)
+                        chunk = await source.read(CHUNK_SIZE)
         except (OSError, UnicodeError) as error:
             raise ExecutionError(1) from error
 

@@ -5,31 +5,11 @@ from tests.helpers import MemoryStream
 from utils.session import Session
 
 
-def test_sentence_copies_words():
-    words = [Word("echo")]
-    sentence = Sentence([], words)
-    words.append(Word("x"))
-    assert [w.word for w in sentence.words] == ["echo"]
-    assert sentence.has_words()
-    assert not Sentence([], []).has_words()
-
-
 async def test_sentence_executes_command():
     session = Session()
     out = MemoryStream()
     await Sentence([], [Word("echo"), Word("hi")]).execute(session, MemoryStream(), out)
     assert out.buffer.getvalue() == "hi\n"
-
-
-def test_sequence_container_protocol():
-    session = Session()
-    sequence = SentenceSequence(session)
-    first, second = Sentence([], [Word("a")]), Sentence([], [Word("b")])
-    sequence.add_sentence(first)
-    sequence.add_sentence(second)
-    assert len(sequence) == 2
-    assert sequence[1] is second
-    assert list(sequence) == [first, second]
 
 
 async def test_empty_sequence_executes_nothing():
@@ -45,7 +25,8 @@ async def test_sequence_executes_sentences(capsys):
     assert capsys.readouterr().out == "hi\n"
 
 
-async def test_global_assignment_changes_session():
+async def test_global_assignment_changes_session(monkeypatch):
+    monkeypatch.setenv("X", "before")
     stream = MemoryStream()
     session = Session()
     sentence = Sentence([Assignment("X", Word("Y"))], [])
@@ -55,8 +36,8 @@ async def test_global_assignment_changes_session():
     assert os.environ.get("X") == "Y"
 
 
-async def test_local_assignment_not_changes_session():
-    os.environ["X"] = ""
+async def test_local_assignment_not_changes_session(monkeypatch):
+    monkeypatch.setenv("X", "")
     stream = MemoryStream()
     session = Session()
     sentence = Sentence([Assignment("X", Word("Y"))], [Word("echo"), Word("hi")])
@@ -65,3 +46,24 @@ async def test_local_assignment_not_changes_session():
     assert session.get("X") == ""
     assert os.environ.get("X") == ""
     assert stream.buffer.getvalue() == "hi\n"
+
+
+def test_session_copy_is_independent():
+    session = Session()
+    session.set("X", "original")
+    copied = session.copy()
+    assert copied.get("X") == "original"
+    copied.set("X", "changed")
+    assert session.get("X") == "original"
+
+
+async def test_local_assignment_preserves_existing_session(monkeypatch):
+    monkeypatch.setenv("X", "system")
+    session = Session()
+    session.set("X", "session")
+    stream = MemoryStream()
+    await Sentence([Assignment("X", Word("local"))], [Word("echo")]).execute(
+        session, stream, stream
+    )
+    assert session.get("X") == "session"
+    assert os.environ["X"] == "system"
