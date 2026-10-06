@@ -1,0 +1,293 @@
+import pytest
+
+from parser import Parser
+from utils.exception import ParserError
+from utils.session import Session
+
+
+def parse_words(source: str) -> list[str]:
+    parser = Parser(session=Session())
+    sequence = parser.parse(source)
+
+    assert len(sequence) == 1
+    return [word.word for word in sequence[0].words]
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("echo", ["echo"]),
+        ("echo hello world", ["echo", "hello", "world"]),
+        ("echo hello world\\", ["echo", "hello", "world\\"]),
+        ("  echo   hello  ", ["echo", "hello"]),
+        ("  echo   $$  ", ["echo", "$$"]),
+        ("echo 'hello world'", ["echo", "hello world"]),
+        ("'hello world'", ["hello world"]),
+        ("'hello world'\n", ["hello world"]),
+        ("'hello' world", ["hello", "world"]),
+        ("''", [""]),
+        ("'\\''", ["'"]),
+        ("\\\\", ["\\"]),
+        ('echo "hello world"', ["echo", "hello world"]),
+        ('"hello world"', ["hello world"]),
+        ('"hello" world', ["hello", "world"]),
+        ('""', [""]),
+        ('"\\\'"', ["'"]),
+        ("echo '\"hello world\"'", ["echo", '"hello world"']),
+        ("echo '\"hello \\world\"'", ["echo", '"hello \\world"']),
+        ('echo "it\'s fine"', ["echo", "it's fine"]),
+        ("echo 'it\"s fine'", ["echo", 'it"s fine']),
+        ('echo "it\\"s fine"', ["echo", 'it"s fine']),
+        ("echo 'it\\'s fine'", ["echo", "it's fine"]),
+    ],
+)
+def test_parser_parses_words_and_quotes(source: str, expected: list[str]) -> None:
+    assert parse_words(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo 'hello",
+        'echo "hello',
+        "hel'lo",
+        'he"llo',
+        "echo hel'loecho hel\"lo",
+    ],
+)
+def test_parser_raises_on_malformed_quotes(source: str) -> None:
+    with pytest.raises(ParserError):
+        parse_words(source)
+
+
+@pytest.mark.parametrize("source", ["", " \t\n "])
+def test_parser_no_sequence_on_empty_source(source):
+    parser = Parser(session=Session())
+    sequence = parser.parse(source)
+    assert len(sequence) == 0
+
+
+def parse_assignments(source: str) -> list[tuple[str, str]]:
+    parser = Parser(session=Session())
+    sequence = parser.parse(source)
+    assert len(sequence) == 1
+    return [(a.key, a.value.word) for a in sequence[0].assignments]
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("X=1", [("X", "1")]),
+        ("NAME=hello", [("NAME", "hello")]),
+        ("_=v", [("_", "v")]),
+        ("VAR1=abc", [("VAR1", "abc")]),
+        ("A_B_C=xyz", [("A_B_C", "xyz")]),
+        ("X=1 Y=2", [("X", "1"), ("Y", "2")]),
+        ("A=1 B=2 C=3", [("A", "1"), ("B", "2"), ("C", "3")]),
+        ("  X=1   Y=2  ", [("X", "1"), ("Y", "2")]),
+        ("X=", [("X", "")]),
+        ("X=a=b", [("X", "a=b")]),
+        ("X==", [("X", "=")]),
+        ("X='hello world'", [("X", "hello world")]),
+        ('X="hello world"', [("X", "hello world")]),
+        ("X=''", [("X", "")]),
+        ('X=""', [("X", "")]),
+        ("X='a=b'", [("X", "a=b")]),
+        ('X="a=b"', [("X", "a=b")]),
+        ("X=/usr/bin", [("X", "/usr/bin")]),
+        ("X=*.txt", [("X", "*.txt")]),
+        ("X=HOME", [("X", "HOME")]),
+        ("X=1 echo", [("X", "1")]),
+        ("X=1 Y=2 echo hello", [("X", "1"), ("Y", "2")]),
+        ("X=1 echo Y=2", [("X", "1")]),
+        ("echo X=1", []),
+        ("echo hello world", []),
+        ("echo", []),
+        ("X=1 echo 'hello world'", [("X", "1")]),
+        ("X = 1", []),
+        ("X =1", []),
+        ("X= 1", [("X", "")]),
+    ],
+)
+def test_parser_parses_assignments(source: str, expected: list[tuple[str, str]]) -> None:
+    assert parse_assignments(source) == expected
+
+
+def parse(source: str) -> tuple[list[tuple[str, str]], list[str]]:
+    """Parse `source` и вернуть (assignments, words) единственного предложения."""
+    sequence = Parser(session=Session()).parse(source)
+    assert len(sequence) == 1
+    sentence = sequence[0]
+    assignments = [(a.key, a.value.word) for a in sentence.assignments]
+    words = [w.word for w in sentence.words]
+    return assignments, words
+
+
+@pytest.mark.parametrize(
+    "source, expected_assignments, expected_words",
+    [
+        ("  echo   hello  ", [], ["echo", "hello"]),
+        ("  X=1   Y=2  ", [("X", "1"), ("Y", "2")], []),
+        ("X=1 echo 'hello world'", [("X", "1")], ["echo", "hello world"]),
+        ("echo X=1", [], ["echo", "X=1"]),
+        ("echo hello X=1", [], ["echo", "hello", "X=1"]),
+        ("X=1 echo Y=2", [("X", "1")], ["echo", "Y=2"]),
+        ("X=1 Y=2 echo Z=3", [("X", "1"), ("Y", "2")], ["echo", "Z=3"]),
+        ("X= 1", [("X", "")], ["1"]),
+        ("1X=1", [], ["1X=1"]),
+        ("X1=1", [("X1", "1")], []),
+        ("X-Y=1", [], ["X-Y=1"]),
+        ("=1", [], ["=1"]),
+        ("X@Y=1", [], ["X@Y=1"]),
+        ("_X=1", [("_X", "1")], []),
+    ],
+)
+def test_parser_assignments_and_words(
+    source: str,
+    expected_assignments: list[tuple[str, str]],
+    expected_words: list[str],
+) -> None:
+    assignments, words = parse(source)
+    assert assignments == expected_assignments
+    assert words == expected_words
+
+
+def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]]:
+    sequence = Parser(session=Session()).parse(source)
+    result = []
+    for sentence in sequence:
+        assignments = [(a.key, a.value.word) for a in sentence.assignments]
+        words = [w.word for w in sentence.words]
+        result.append((assignments, words))
+    return result
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ("echo a | echo b", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("echo a|echo b", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("  echo   a   |   echo   b  ", [([], ["echo", "a"]), ([], ["echo", "b"])]),
+        ("A=1 | B=2", [([("A", "1")], []), ([("B", "2")], [])]),
+        ("A=1 echo | B=2 cat", [([("A", "1")], ["echo"]), ([("B", "2")], ["cat"])]),
+        (
+            "A=1 echo x | B=2 echo y",
+            [([("A", "1")], ["echo", "x"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        (
+            "A=1 echo x \\' | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "'"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        (
+            "A=1 echo x \\ | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "\\"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        (
+            "A=1 echo x \\\\ | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "\\"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        ("echo 'a|b'", [([], ["echo", "a|b"])]),
+        ("echo 'a\\'|b'", [([], ["echo", "a'|b"])]),
+        ("echo 'a\\|b'", [([], ["echo", "a\\|b"])]),
+        ("echo 'a\\\\|b'", [([], ["echo", "a\\|b"])]),
+        ('echo "a|b"', [([], ["echo", "a|b"])]),
+        ("echo 'a | b'", [([], ["echo", "a | b"])]),
+        ('echo "a | b"', [([], ["echo", "a | b"])]),
+        ("echo 'a|b' c|d", [([], ["echo", "a|b", "c"]), ([], ["d"])]),
+        ('echo "a|b" c|d', [([], ["echo", "a|b", "c"]), ([], ["d"])]),
+        (
+            "echo 'a|b' | echo \"c|d\"",
+            [([], ["echo", "a|b"]), ([], ["echo", "c|d"])],
+        ),
+        ("A='a|b' | B=\"c|d\"", [([("A", "a|b")], []), ([("B", "c|d")], [])]),
+    ],
+)
+def test_parser_parses_multiple_sentences_with_pipes(
+    source: str,
+    expected: list[tuple[list[tuple[str, str]], list[str]]],
+) -> None:
+    assert parse_sentences(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "echo |",
+        "echo ||",
+        "| echo",
+        "|",
+        "||",
+        "echo | | echo",
+        "echo || echo",
+        "   | echo",
+        "echo |   ",
+        "A=1 |",
+        "| A=1",
+        "A=1 | | B=2",
+    ],
+)
+def test_parser_raises_on_empty_sentence_after_pipe(source: str) -> None:
+    with pytest.raises(ParserError):
+        Parser(session=Session()).parse(source)
+
+
+def make_session(**kwargs):
+    session = Session()
+    for key, value in kwargs.items():
+        session.set(key, value)
+    return session
+
+
+@pytest.mark.parametrize(
+    "source, variables, expected",
+    [
+        ("echo $VAR", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}abc", {"VAR": "hello"}, ["echo", "helloabc"]),
+        ("echo $$VAR", {"VAR": "hello"}, ["echo", "$hello"]),
+        ("echo $${VAR}", {"VAR": "hello"}, ["echo", "$hello"]),
+        ("echo $MISSING", {}, ["echo"]),
+        ("echo \\$VAR", {"VAR": "hello"}, ["echo", "$VAR"]),
+        ("echo '$VAR'", {"VAR": "hello"}, ["echo", "$VAR"]),
+        ("echo \\\\$VAR", {"VAR": "hello"}, ["echo", "\\hello"]),
+        ('echo "$VAR"', {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
+        ("echo $", {}, ["echo", "$"]),
+        ("echo \\x", {}, ["echo", "\\x"]),
+        ("echo ${VAR}", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}suffix", {"VAR": "hello"}, ["echo", "hellosuffix"]),
+        ('echo "$MISSING"', {}, ["echo", ""]),
+        ('echo "$VAR"', {"VAR": "two words"}, ["echo", "two words"]),
+        ("echo $VAR", {"VAR": "two words"}, ["echo", "two", "words"]),
+        ("$CMD hi", {"CMD": "echo"}, ["echo", "hi"]),
+        ("echo $VAR", {"VAR": "a|b"}, ["echo", "a|b"]),
+        ("echo ${A}${B}", {"A": "one", "B": "two"}, ["echo", "onetwo"]),
+        ("$x$y", {"x": "ex", "y": "it"}, ["exit"]),
+        ('echo "$Q"', {"Q": 'a"b'}, ["echo", 'a"b']),
+        ('echo "$Q"', {"Q": "\\"}, ["echo", "\\"]),
+        ('echo "$"', {}, ["echo", "$"]),
+    ],
+)
+def test_substitution_success(source, variables, expected):
+    session = make_session(**variables)
+    parser = Parser(session=session)
+    sequence = parser.parse(source)
+    assert len(sequence) == 1
+    words = [w.word for w in sequence[0].words]
+    assert words == expected
+
+
+@pytest.mark.parametrize(
+    "source, variables",
+    [
+        ("echo ${VA!R}", {"VAR": "hello"}),
+        ("${VAR", {"VAR": "hello"}),
+        ("${VAR", {}),
+        ("${}", {}),
+    ],
+)
+def test_substitution_errors(source, variables):
+    session = make_session(**variables)
+    parser = Parser(session=session)
+    with pytest.raises(ParserError):
+        parser.parse(source)
