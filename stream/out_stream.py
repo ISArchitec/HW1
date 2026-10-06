@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from utils.exception import ExecutionError
 
 
 class OutStream(ABC):
@@ -14,7 +15,10 @@ class OutStream(ABC):
 
     async def close_from_writer(self):
         """Signal that we are stop reading from stream"""
-        await self.write("")
+        try:
+            await self.write("")
+        except (OSError, UnicodeError) as error:
+            raise ExecutionError(1) from error
         self._closed = True
 
     def is_closed_from_writer(self):
