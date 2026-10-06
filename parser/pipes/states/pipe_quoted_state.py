@@ -15,5 +15,5 @@ class PipeQuotedState(PipeState):
         from parser.pipes.states.pipe_normal_state import PipeNormalState
 
         self._splitter.append(symbol)
-        if symbol == self.__quote:
+        if symbol == self.__quote and not self._splitter.get_ignore_quote():
             self._splitter.set_state(PipeNormalState)

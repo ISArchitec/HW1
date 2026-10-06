@@ -14,10 +14,19 @@ class PipeSplitter(IPipeSplitter):
     def __init__(self):
         self.__sequences: list[str] = [""]
         self.__state: PipeState = PipeNormalState(self)
+        self.__ignore_quote: bool = False
 
     def add_symbol(self, symbol: str) -> None:
         "Consumes 1 symbol"
         self.__state.add_symbol(symbol)
+        if not self.__ignore_quote and symbol == "\\":
+            self.__ignore_quote = True
+        else:
+            self.__ignore_quote = False
+
+    def get_ignore_quote(self) -> bool:
+        "Returns True if previous symbol is \\"
+        return self.__ignore_quote
 
     def set_state(self, state_class: Callable[..., Any], *args: Any) -> None:
         "Sets splitter state"

@@ -17,3 +17,9 @@ class WordSkipState(WordState):
         elif not symbol.isspace():
             self._splitter.add_word(symbol)
             self._splitter.set_state(WordUnquotedState)
+
+    def add_escaped_symbol(self, symbol: str) -> None:
+        from parser.word_splitter.states.word_unquoted_state import WordUnquotedState
+
+        self._splitter.add_word(symbol)
+        self._splitter.set_state(WordUnquotedState)

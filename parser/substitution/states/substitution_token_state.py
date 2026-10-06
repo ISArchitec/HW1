@@ -17,7 +17,7 @@ class SubstitutionTokenState(SubstitutionState):
             self.__token += symbol
         else:
             self._substitutor.add_text(self._substitutor.get_variable(self.__token))
-            self._substitutor.add_with_quote_tracking(symbol)
+            self._substitutor.add_with_quote_and_dollar_tracking(symbol)
 
     def finish(self) -> None:
         self._substitutor.add_text(self._substitutor.get_variable(self.__token))
