@@ -11,6 +11,10 @@ class IPipeSplitter(ABC):
         """Append symbol to the sentence being built"""
 
     @abstractmethod
+    def get_ignore_quote(self) -> bool:
+        """Return whether we should ignore the quote"""
+
+    @abstractmethod
     def add_sentence(self) -> None:
         """Start a new sentence"""
 

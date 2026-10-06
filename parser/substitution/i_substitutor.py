@@ -15,7 +15,7 @@ class ISubstitutor(ABC):
         """Append text to the result"""
 
     @abstractmethod
-    def add_with_quote_tracking(self, symbol: str) -> None:
+    def add_with_quote_and_dollar_tracking(self, symbol: str) -> None:
         """Append symbol to the result, tracking quotes in it"""
 
     @abstractmethod
