@@ -85,7 +85,7 @@ class CatFormatter:
 class CatCommand(Command):
     """Concatenate files or input stream text with optional display formatting."""
 
-    async def execute(self) -> None:
+    async def _execute_unsafe(self) -> None:
         """Parse cat options and write formatted input to the output stream."""
         options, operands = parse_options(self.args, CatOption)
         if CatOption.SHOW_ALL in options:
