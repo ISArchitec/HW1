@@ -270,11 +270,11 @@ def make_session(**kwargs):
             {"Q": '\\'},
             ["echo", '\\']
         ),
-        # (
-        #     'echo "$"',
-        #     {},
-        #     ["echo", "$"]
-        # ),
+        (
+            'echo "$"',
+            {},
+            ["echo", "$"]
+        ),
     ],
 )
 def test_substitution_success(source, variables, expected):

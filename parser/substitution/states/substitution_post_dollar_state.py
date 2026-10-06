@@ -16,7 +16,7 @@ class SubstitutionPostDollarState(SubstitutionState):
         elif symbol == "{":
             self._substitutor.set_state(SubstitutionBracedTokenState)
         else:
-            self._substitutor.add_symbol("$")
+            self._substitutor.add_text("$")
             self._substitutor.add_with_quote_tracking(symbol)
 
     def finish(self) -> None:
