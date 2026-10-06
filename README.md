@@ -33,3 +33,12 @@ pyright
 ```
 
 В CI те же проверки выполняются в job `lint`.
+
+## Coverage
+
+```bash
+pip install coverage
+coverage run -m pytest
+coverage report -m
+coverage html
+```

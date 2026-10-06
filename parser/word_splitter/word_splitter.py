@@ -32,10 +32,6 @@ class WordSplitter(IWordSplitter):
             return
         self.__state.add_symbol(symbol)
 
-    def get_ignore_quote(self) -> bool:
-        "Returns True if previous symbol is a backslash"
-        return self.__ignore_quote
-
     def set_state(self, state_class: Callable[..., Any], *args: Any) -> None:
         "Sets splitter state"
         self.__state = state_class(self, *args)

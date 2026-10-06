@@ -20,6 +20,7 @@ def parse_words(source: str) -> list[str]:
     [
         ("echo", ["echo"]),
         ("echo hello world", ["echo", "hello", "world"]),
+        ("echo hello world\\", ["echo", "hello", "world\\"]),
         ("  echo   hello  ", ["echo", "hello"]),
         ("  echo   $$  ", ["echo", "$$"]),
         ("echo 'hello world'", ["echo", "hello world"]),
@@ -248,7 +249,10 @@ def make_session(**kwargs):
     "source, variables, expected",
     [
         ("echo $VAR", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}", {"VAR": "hello"}, ["echo", "hello"]),
+        ("echo ${VAR}abc", {"VAR": "hello"}, ["echo", "helloabc"]),
         ("echo $$VAR", {"VAR": "hello"}, ["echo", "$hello"]),
+        ("echo $${VAR}", {"VAR": "hello"}, ["echo", "$hello"]),
         ("echo $MISSING", {}, ["echo"]),
         ("echo \\$VAR", {"VAR": "hello"}, ["echo", "$VAR"]),
         ("echo '$VAR'", {"VAR": "hello"}, ["echo", "$VAR"]),
