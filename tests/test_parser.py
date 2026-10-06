@@ -26,13 +26,19 @@ def parse_words(source: str) -> list[str]:
         ("'hello world'\n", ["hello world"]),
         ("'hello' world", ["hello", "world"]),
         ("''", [""]),
+        ("'\\\''", ["'"]),
+        ("\\\\", ["\\"]),
         ('echo "hello world"', ["echo", "hello world"]),
         ('"hello world"', ["hello world"]),
         ('"hello" world', ["hello", "world"]),
         ('""', [""]),
+        ('"\\\'"', ["'"]),
         ("echo '\"hello world\"'", ["echo", '"hello world"']),
+        ("echo '\"hello \\world\"'", ["echo", '"hello \\world"']),
         ('echo "it\'s fine"', ["echo", "it's fine"]),
         ("echo 'it\"s fine'", ["echo", 'it"s fine']),
+        ('echo "it\\"s fine"', ["echo", "it\"s fine"]),
+        ("echo 'it\\'s fine'", ["echo", 'it\'s fine']),
     ],
 )
 def test_parser_parses_words_and_quotes(source: str, expected: list[str]) -> None:
@@ -173,7 +179,22 @@ def parse_sentences(source: str) -> list[tuple[list[tuple[str, str]], list[str]]
             "A=1 echo x | B=2 echo y",
             [([("A", "1")], ["echo", "x"]), ([("B", "2")], ["echo", "y"])],
         ),
+        (
+            "A=1 echo x \\\' | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "\'"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        (
+            "A=1 echo x \\ | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "\\"]), ([("B", "2")], ["echo", "y"])],
+        ),
+        (
+            "A=1 echo x \\\\ | B=2 echo y",
+            [([("A", "1")], ["echo", "x", "\\"]), ([("B", "2")], ["echo", "y"])],
+        ),
         ("echo 'a|b'", [([], ["echo", "a|b"])]),
+        ("echo 'a\\\'|b'", [([], ["echo", "a\'|b"])]),
+        ("echo 'a\\|b'", [([], ["echo", "a\\|b"])]),
+        ("echo 'a\\\\|b'", [([], ["echo", "a\\|b"])]),
         ('echo "a|b"', [([], ["echo", "a|b"])]),
         ("echo 'a | b'", [([], ["echo", "a | b"])]),
         ('echo "a | b"', [([], ["echo", "a | b"])]),
@@ -233,7 +254,7 @@ def make_session(**kwargs):
         ('echo "$VAR"', {"VAR": "hello"}, ["echo", "hello"]),
         ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
         ("echo $", {}, ["echo", "$"]),
-        ("echo \\x", {}, ["echo", "\\x"]), # TODO: escaping \" \'
+        ("echo \\x", {}, ["echo", "\\x"]),
         # (
         #     "$x$y",
         #     {"x": "ex", "y": "it"},
