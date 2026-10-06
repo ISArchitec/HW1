@@ -6,10 +6,7 @@ class SubstitutionNormalState(SubstitutionState):
 
     def add_symbol(self, symbol: str) -> None:
         from parser.substitution.states.substitution_escaped_state import SubstitutionEscapedState
-        from parser.substitution.states.substitution_post_dollar_state import (
-            SubstitutionPostDollarState,
-        )
-        
+
         if symbol == "\\":
             self._substitutor.set_state(SubstitutionEscapedState)
         else:

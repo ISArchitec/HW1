@@ -19,7 +19,7 @@ class PipeSplitter(IPipeSplitter):
     def add_symbol(self, symbol: str) -> None:
         "Consumes 1 symbol"
         self.__state.add_symbol(symbol)
-        if not self.__ignore_quote and symbol == '\\':
+        if not self.__ignore_quote and symbol == "\\":
             self.__ignore_quote = True
         else:
             self.__ignore_quote = False
