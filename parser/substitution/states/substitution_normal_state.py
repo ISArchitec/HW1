@@ -9,10 +9,8 @@ class SubstitutionNormalState(SubstitutionState):
         from parser.substitution.states.substitution_post_dollar_state import (
             SubstitutionPostDollarState,
         )
-
-        if symbol == "$":
-            self._substitutor.set_state(SubstitutionPostDollarState)
-        elif symbol == "\\":
+        
+        if symbol == "\\":
             self._substitutor.set_state(SubstitutionEscapedState)
         else:
-            self._substitutor.add_with_quote_tracking(symbol)
+            self._substitutor.add_with_quote_and_dollar_tracking(symbol)

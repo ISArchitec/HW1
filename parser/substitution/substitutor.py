@@ -3,6 +3,7 @@ from typing import Any
 
 from parser.substitution.i_substitutor import ISubstitutor
 from parser.substitution.states.substitution_normal_state import SubstitutionNormalState
+from parser.substitution.states.substitution_post_dollar_state import SubstitutionPostDollarState
 from parser.substitution.states.substitution_single_quoted_state import (
     SubstitutionSingleQuotedState,
 )
@@ -33,8 +34,11 @@ class Substitutor(ISubstitutor):
         "Adds text to result"
         self.__result += text
 
-    def add_with_quote_tracking(self, symbol: str) -> None:
+    def add_with_quote_and_dollar_tracking(self, symbol: str) -> None:
         """Append symbol tracking quotes in it"""
+        if symbol == "$":
+            self.set_state(SubstitutionPostDollarState)
+            return
         self.__result += symbol
         if symbol == "'" and not self.__in_double_quotes:
             self.set_state(SubstitutionSingleQuotedState)

@@ -255,11 +255,11 @@ def make_session(**kwargs):
         ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
         ("echo $", {}, ["echo", "$"]),
         ("echo \\x", {}, ["echo", "\\x"]),
-        # (
-        #     "$x$y",
-        #     {"x": "ex", "y": "it"},
-        #     ["exit"]
-        # ),
+        (
+            "$x$y",
+            {"x": "ex", "y": "it"},
+            ["exit"]
+        ),
         (
             'echo "$Q"',
             {"Q": 'a"b'},
