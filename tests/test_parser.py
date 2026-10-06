@@ -260,11 +260,16 @@ def make_session(**kwargs):
         #     {"x": "ex", "y": "it"},
         #     ["exit"]
         # ),
-        # (
-        #     'echo "$Q"',
-        #     {"Q": 'a"b'},
-        #     ["echo", 'a"b']
-        # ),
+        (
+            'echo "$Q"',
+            {"Q": 'a"b'},
+            ["echo", 'a"b']
+        ),
+        (
+            'echo "$Q"',
+            {"Q": '\\'},
+            ["echo", '\\']
+        ),
         # (
         #     'echo "$"',
         #     {},
