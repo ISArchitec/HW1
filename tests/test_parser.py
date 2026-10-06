@@ -233,7 +233,22 @@ def make_session(**kwargs):
         ('echo "$VAR"', {"VAR": "hello"}, ["echo", "hello"]),
         ("echo \"'$VAR'\"", {"VAR": "hello"}, ["echo", "'hello'"]),
         ("echo $", {}, ["echo", "$"]),
-        ("echo \\x", {}, ["echo", "\\x"]),
+        ("echo \\x", {}, ["echo", "\\x"]), # TODO: escaping \" \'
+        # (
+        #     "$x$y",
+        #     {"x": "ex", "y": "it"},
+        #     ["exit"]
+        # ),
+        # (
+        #     'echo "$Q"',
+        #     {"Q": 'a"b'},
+        #     ["echo", 'a"b']
+        # ),
+        # (
+        #     'echo "$"',
+        #     {},
+        #     ["echo", "$"]
+        # ),
     ],
 )
 def test_substitution_success(source, variables, expected):

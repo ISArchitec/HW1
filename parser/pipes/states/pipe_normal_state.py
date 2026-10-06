@@ -11,7 +11,7 @@ class PipeNormalState(PipeState):
             self._splitter.add_sentence()
             return
         self._splitter.append(symbol)
-        if symbol == "'":
+        if symbol == "'" and not self._splitter.get_ignore_quote():
             self._splitter.set_state(PipeQuotedState, "'")
-        elif symbol == '"':
+        elif symbol == '"' and not self._splitter.get_ignore_quote():
             self._splitter.set_state(PipeQuotedState, '"')

@@ -45,7 +45,7 @@ class Substitutor(ISubstitutor):
 
     def get_variable(self, name: str) -> str:
         "Gets session variable"
-        return self.__session.get(name)
+        return self.__session.get(name).replace("\\", "\\\\").replace("\'", "\\\'").replace("\"", "\\\"")
 
     def __str__(self) -> str:
         self.__state.finish()
